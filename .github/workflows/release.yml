@@ -1,0 +1,127 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-mac:
+    name: Build macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build signed DMG + portable zip
+        run: npm run app:build --workspace=packages/app -- --mac
+        env:
+          # Set these secrets in GitHub repo settings for signed builds
+          APPLE_ID:           ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD:  ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID:      ${{ secrets.APPLE_TEAM_ID }}
+          CSC_LINK:           ${{ secrets.MAC_CERT_P12_BASE64 }}
+          CSC_KEY_PASSWORD:   ${{ secrets.MAC_CERT_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-builds
+          path: packages/app/release/*.{dmg,zip}
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build NSIS installer + portable exe
+        run: npm run app:build --workspace=packages/app -- --win
+        env:
+          CSC_LINK:         ${{ secrets.WIN_CERT_P12_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-builds
+          path: packages/app/release/*.{exe}
+
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: sudo apt-get install -y rpm fakeroot dpkg
+      - name: Build AppImage + deb
+        run: npm run app:build --workspace=packages/app -- --linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-builds
+          path: packages/app/release/*.{AppImage,deb}
+
+  publish-npm:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+      - run: npm ci
+      - name: Publish @ccm/core
+        run: npm publish --workspace=packages/core --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish ccm (CLI)
+        run: npm publish --workspace=packages/tui --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-mac, build-windows, build-linux, publish-npm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name:   ${{ github.ref }}
+          name:       CCM v${{ steps.version.outputs.version }}
+          draft:      true
+          prerelease: false
+          files:      release-artifacts/**/*
+          body: |
+            ## CCM v${{ steps.version.outputs.version }}
+
+            ### Install
+
+            **CLI (recommended):**
+            ```bash
+            npm install -g ccm
+            ```
+
+            **Desktop app:** download the installer for your platform below.
+
+            See [CHANGELOG.md](https://github.com/candyburst/ccm/blob/main/CHANGELOG.md) for what's new.

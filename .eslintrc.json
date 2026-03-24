@@ -1,0 +1,33 @@
+{
+  "env": {
+    "es2022": true,
+    "node": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-console": "warn",
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "no-var": "error",
+    "prefer-const": "error",
+    "eqeqeq": ["error", "always"],
+    "no-throw-literal": "error",
+    "no-return-await": "error",
+    "prefer-promise-reject-errors": "error",
+    "no-implicit-coercion": "error"
+  },
+  "overrides": [
+    {
+      "files": ["packages/app/electron/**/*.js"],
+      "parserOptions": { "sourceType": "commonjs" },
+      "env": { "node": true }
+    },
+    {
+      "files": ["packages/app/src/**/*.jsx"],
+      "parserOptions": { "ecmaFeatures": { "jsx": true } },
+      "env": { "browser": true }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "name": "@ccm/core",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./accounts": "./src/accounts.js",
+    "./projects": "./src/projects.js",
+    "./runner": "./src/runner.js",
+    "./sessions": "./src/sessions.js",
+    "./config": "./src/config.js",
+    "./export-import": "./src/export-import.js",
+    "./watch": "./src/watch.js",
+    "./providers": "./src/providers.js",
+    "./hooks": "./src/hooks.js",
+    "./serve": "./src/serve.js",
+    "./plugins": "./src/plugins.js"
+  },
+  "description": "Core library for CCM \u2014 Claude Code account management, session transfer, smart resume",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "anthropic",
+    "account-manager",
+    "developer-tools"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT",
+  "author": "CCM Contributors",
+  "homepage": "https://github.com/candyburst/ccm#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/candyburst/ccm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/candyburst/ccm/issues"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ]
+}
