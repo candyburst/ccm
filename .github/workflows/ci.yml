@@ -53,9 +53,8 @@ jobs:
           cache-dependency-path: '**/package-lock.json'
       - run: npm ci
       - run: node --input-type=module <<< "import('@ccm/core')" 2>/dev/null || node packages/core/src/index.js --check 2>/dev/null || echo "core import check skipped"
-      - run: npm run build --workspace=packages/app
-        env:
-          SKIP_ELECTRON_BUILD: '1'
+      - run: npx vite build
+        working-directory: packages/app
 
   format:
     name: Format check
