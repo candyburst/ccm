@@ -23,7 +23,7 @@
     "electron": "^29.0.0",
     "electron-builder": "^24.9.0",
     "vite": "5.2.11",
-    "wait-on": "7.2.0"
+    "wait-on": "9.0.4"
   },
   "build": {
     "appId": "com.ccm.app",
