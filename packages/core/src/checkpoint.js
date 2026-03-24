@@ -1,6 +1,14 @@
 import { spawnSync } from 'child_process'
 import { copyDirSync } from './fs-utils.js'
-import { existsSync, mkdirSync, writeFileSync, renameSync, readFileSync, copyFileSync, readdirSync } from 'fs'
+import {
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+  renameSync,
+  readFileSync,
+  copyFileSync,
+  readdirSync,
+} from 'fs'
 import { join } from 'path'
 import { CHECKPOINTS_DIR, CONFIG_FILE, CCM_DIR, DEFAULT_SYNC_CONFIG } from './config.js'
 
@@ -9,7 +17,11 @@ import { CHECKPOINTS_DIR, CONFIG_FILE, CCM_DIR, DEFAULT_SYNC_CONFIG } from './co
 export function loadSyncConfig() {
   try {
     const raw = JSON.parse(readFileSync(CONFIG_FILE, 'utf8'))
-    return { ...DEFAULT_SYNC_CONFIG, ...raw, github: { ...DEFAULT_SYNC_CONFIG.github, ...(raw.github || {}) } }
+    return {
+      ...DEFAULT_SYNC_CONFIG,
+      ...raw,
+      github: { ...DEFAULT_SYNC_CONFIG.github, ...(raw.github || {}) },
+    }
   } catch {
     return { ...DEFAULT_SYNC_CONFIG }
   }
@@ -45,7 +57,10 @@ export function hasRemote(dir) {
 
 // ── Core checkpoint operation ──────────────────────────────────────────────────
 
-export async function gitCheckpoint(projectRoot, { message = 'auto checkpoint', push = false, remote = 'origin' } = {}) {
+export async function gitCheckpoint(
+  projectRoot,
+  { message = 'auto checkpoint', push = false, remote = 'origin' } = {}
+) {
   if (!projectRoot || !isGitRepo(projectRoot)) {
     return { success: false, skipped: true, reason: 'not_a_git_repo' }
   }
@@ -53,11 +68,11 @@ export async function gitCheckpoint(projectRoot, { message = 'auto checkpoint', 
   const add = git(['add', '-A'], projectRoot)
   if (!add.ok) return { success: false, reason: 'git_add_failed', detail: add.stderr }
 
-  const status  = git(['status', '--porcelain'], projectRoot)
+  const status = git(['status', '--porcelain'], projectRoot)
   const isDirty = status.stdout.length > 0
 
   const commitMsg = `[ccm] ${message} · ${new Date().toISOString().slice(0, 19).replace('T', ' ')}`
-  const commit    = git(['commit', '--allow-empty', '-m', commitMsg], projectRoot)
+  const commit = git(['commit', '--allow-empty', '-m', commitMsg], projectRoot)
   if (!commit.ok) {
     return { success: false, reason: 'git_commit_failed', detail: commit.stderr }
   }
@@ -67,7 +82,7 @@ export async function gitCheckpoint(projectRoot, { message = 'auto checkpoint', 
 
   let pushed = false
   if (push && hasRemote(projectRoot)) {
-    const branch  = getGitBranch(projectRoot)
+    const branch = getGitBranch(projectRoot)
     const pushRes = git(['push', remote, branch], projectRoot)
     pushed = pushRes.ok
   }
@@ -81,13 +96,19 @@ export function backupSessionFile(sessionFilePath, { account, sessionId, project
   if (!existsSync(sessionFilePath)) return { success: false, reason: 'file_not_found' }
 
   const label = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-  const dir   = join(CHECKPOINTS_DIR, account)
+  const dir = join(CHECKPOINTS_DIR, account)
   mkdirSync(dir, { recursive: true })
 
   const dest = join(dir, `${label}-${sessionId}.jsonl`)
   copyFileSync(sessionFilePath, dest)
 
-  const meta = { account, sessionId, projectRoot, savedAt: new Date().toISOString(), source: sessionFilePath }
+  const meta = {
+    account,
+    sessionId,
+    projectRoot,
+    savedAt: new Date().toISOString(),
+    source: sessionFilePath,
+  }
   const metaDest = dest.replace('.jsonl', '.meta.json')
   const tmp2 = metaDest + '.tmp'
   writeFileSync(tmp2, JSON.stringify(meta, null, 2))
@@ -111,10 +132,14 @@ export function listCheckpoints(account = null) {
         try {
           const meta = JSON.parse(readFileSync(join(full, f), 'utf8'))
           results.push({ ...meta, checkpointFile: join(full, f.replace('.meta.json', '.jsonl')) })
-        } catch { /* skip corrupt entries */ }
+        } catch {
+          /* skip corrupt entries */
+        }
       }
     }
-  } catch { /* skip */ }
+  } catch {
+    /* skip */
+  }
   return results.sort((a, b) => b.savedAt.localeCompare(a.savedAt))
 }
 
@@ -138,7 +163,9 @@ export async function pushSessionBackup(projectRoot) {
   if (existsSync(CHECKPOINTS_DIR)) {
     try {
       copyDirSync(CHECKPOINTS_DIR, backupDir)
-    } catch { /* backup is best-effort — don't fail the session */ }
+    } catch {
+      /* backup is best-effort — don't fail the session */
+    }
   }
 
   return gitCheckpoint(backupDir, { message: 'session backup', push: true })

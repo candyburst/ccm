@@ -12,14 +12,14 @@ const SETTINGS_FILE = join(CLAUDE_HOME, 'settings.json')
 // The hooks CCM can register — keyed by a stable CCM identifier
 const CCM_HOOKS = {
   'ccm-checkpoint': {
-    event:   'SessionEnd',
+    event: 'SessionEnd',
     command: 'ccm checkpoint --silent',
-    desc:    'Auto-checkpoint on every session end',
+    desc: 'Auto-checkpoint on every session end',
   },
   'ccm-push': {
-    event:   'PostToolCall',
+    event: 'PostToolCall',
     command: 'ccm sync push --silent --if-dirty',
-    desc:    'Push project to remote after each tool call',
+    desc: 'Push project to remote after each tool call',
   },
 }
 
@@ -27,8 +27,11 @@ const CCM_HOOKS = {
 
 function readSettings() {
   if (!existsSync(SETTINGS_FILE)) return {}
-  try { return JSON.parse(readFileSync(SETTINGS_FILE, 'utf8')) }
-  catch { return {} }
+  try {
+    return JSON.parse(readFileSync(SETTINGS_FILE, 'utf8'))
+  } catch {
+    return {}
+  }
 }
 
 function writeSettings(settings) {
@@ -55,8 +58,7 @@ export function registerHooks(hookId = null) {
     if (!settings.hooks[hook.event]) settings.hooks[hook.event] = []
 
     // Avoid duplicate registrations — check by command string
-    const alreadyRegistered = settings.hooks[hook.event]
-      .some(h => h.command === hook.command)
+    const alreadyRegistered = settings.hooks[hook.event].some(h => h.command === hook.command)
 
     if (!alreadyRegistered) {
       settings.hooks[hook.event].push({ command: hook.command })
@@ -74,18 +76,15 @@ export function registerHooks(hookId = null) {
 export function unregisterHooks(hookId = null) {
   if (!existsSync(SETTINGS_FILE)) return
 
-  const settings  = readSettings()
+  const settings = readSettings()
   if (!settings.hooks) return
 
-  const toRemove = hookId
-    ? [CCM_HOOKS[hookId]].filter(Boolean)
-    : Object.values(CCM_HOOKS)
+  const toRemove = hookId ? [CCM_HOOKS[hookId]].filter(Boolean) : Object.values(CCM_HOOKS)
 
   const commandsToRemove = new Set(toRemove.map(h => h.command))
 
   for (const event of Object.keys(settings.hooks)) {
-    settings.hooks[event] = settings.hooks[event]
-      .filter(h => !commandsToRemove.has(h.command))
+    settings.hooks[event] = settings.hooks[event].filter(h => !commandsToRemove.has(h.command))
     if (settings.hooks[event].length === 0) {
       delete settings.hooks[event]
     }
@@ -107,8 +106,7 @@ export function listRegisteredHooks() {
   const settings = readSettings()
 
   return Object.entries(CCM_HOOKS).map(([id, hook]) => {
-    const registered = settings.hooks?.[hook.event]
-      ?.some(h => h.command === hook.command) ?? false
+    const registered = settings.hooks?.[hook.event]?.some(h => h.command === hook.command) ?? false
     return { id, event: hook.event, command: hook.command, desc: hook.desc, registered }
   })
 }

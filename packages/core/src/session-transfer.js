@@ -1,7 +1,4 @@
-import {
-  existsSync, readdirSync, statSync,
-  mkdirSync, copyFileSync, readFileSync,
-} from 'fs'
+import { existsSync, readdirSync, statSync, mkdirSync, copyFileSync, readFileSync } from 'fs'
 import { join, basename } from 'path'
 import { CLAUDE_HOME, SESSIONS_DIR, AUTH, claudeProjects } from './config.js'
 
@@ -22,8 +19,8 @@ function projectsDirForAccount(account) {
 // Find the most recently modified .jsonl session file for the current cwd
 export function findLatestSession(account, cwd = process.cwd()) {
   const projectsDir = projectsDirForAccount(account)
-  const encoded     = encodeCwd(cwd)
-  const sessionDir  = join(projectsDir, encoded)
+  const encoded = encodeCwd(cwd)
+  const sessionDir = join(projectsDir, encoded)
 
   if (!existsSync(sessionDir)) return null
 
@@ -33,11 +30,16 @@ export function findLatestSession(account, cwd = process.cwd()) {
   try {
     for (const f of readdirSync(sessionDir)) {
       if (!f.endsWith('.jsonl')) continue
-      const full  = join(sessionDir, f)
+      const full = join(sessionDir, f)
       const mtime = statSync(full).mtimeMs
-      if (mtime > latestMtime) { latestMtime = mtime; latest = full }
+      if (mtime > latestMtime) {
+        latestMtime = mtime
+        latest = full
+      }
     }
-  } catch { return null }
+  } catch {
+    return null
+  }
 
   if (!latest) return null
 
@@ -47,9 +49,9 @@ export function findLatestSession(account, cwd = process.cwd()) {
 
 // Copy a session JSONL from one account to another so --resume works cross-account
 export function transferSession(fromAccount, toAccount, sessionId, cwd = process.cwd()) {
-  const encoded  = encodeCwd(cwd)
-  const fromDir  = join(projectsDirForAccount(fromAccount), encoded)
-  const toDir    = join(projectsDirForAccount(toAccount),   encoded)
+  const encoded = encodeCwd(cwd)
+  const fromDir = join(projectsDirForAccount(fromAccount), encoded)
+  const toDir = join(projectsDirForAccount(toAccount), encoded)
   const fromFile = join(fromDir, `${sessionId}.jsonl`)
 
   if (!existsSync(fromFile)) {
@@ -67,13 +69,22 @@ export function transferSession(fromAccount, toAccount, sessionId, cwd = process
 export function sessionSummary(filePath) {
   if (!existsSync(filePath)) return null
   try {
-    const lines = readFileSync(filePath, 'utf8')
-      .split('\n').filter(Boolean)
-    const msgs  = lines.map(l => { try { return JSON.parse(l) } catch { return null } }).filter(Boolean)
+    const lines = readFileSync(filePath, 'utf8').split('\n').filter(Boolean)
+    const msgs = lines
+      .map(l => {
+        try {
+          return JSON.parse(l)
+        } catch {
+          return null
+        }
+      })
+      .filter(Boolean)
     const human = msgs.filter(m => m.type === 'human' || m.role === 'human').length
-    const asst  = msgs.filter(m => m.type === 'assistant' || m.role === 'assistant').length
+    const asst = msgs.filter(m => m.type === 'assistant' || m.role === 'assistant').length
     return { total: msgs.length, human, assistant: asst }
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 // List all sessions for an account (for display in UI)
@@ -93,15 +104,17 @@ export function listSessionFiles(account, cwd = null) {
         const full = join(sessionDir, f)
         const stat = statSync(full)
         results.push({
-          sessionId:    basename(f, '.jsonl'),
-          filePath:     full,
-          encodedCwd:   encoded,
-          modifiedAt:   new Date(stat.mtimeMs).toISOString(),
-          sizeBytes:    stat.size,
+          sessionId: basename(f, '.jsonl'),
+          filePath: full,
+          encodedCwd: encoded,
+          modifiedAt: new Date(stat.mtimeMs).toISOString(),
+          sizeBytes: stat.size,
         })
       }
     }
-  } catch { /* skip */ }
+  } catch {
+    /* skip */
+  }
 
   return results.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))
 }

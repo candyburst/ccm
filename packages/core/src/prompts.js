@@ -10,8 +10,11 @@ import { loadProject } from './projects.js'
 const PROMPTS_FILE = join(CCM_DIR, 'prompts.json')
 
 function loadPrompts() {
-  try { return JSON.parse(readFileSync(PROMPTS_FILE, 'utf8')) }
-  catch { return {} }
+  try {
+    return JSON.parse(readFileSync(PROMPTS_FILE, 'utf8'))
+  } catch {
+    return {}
+  }
 }
 
 function savePrompts(prompts) {
@@ -24,9 +27,9 @@ export function savePrompt(name, template, notes = '') {
   prompts[name] = {
     template,
     notes,
-    createdAt:  prompts[name]?.createdAt || new Date().toISOString(),
-    updatedAt:  new Date().toISOString(),
-    usedCount:  prompts[name]?.usedCount || 0,
+    createdAt: prompts[name]?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    usedCount: prompts[name]?.usedCount || 0,
   }
   savePrompts(prompts)
 }
@@ -55,26 +58,33 @@ export function deletePrompt(name) {
  * {{project}}, {{account}}, {{date}}, {{gitBranch}}
  */
 export function renderPrompt(name) {
-  const prompt  = getPrompt(name)
+  const prompt = getPrompt(name)
   const project = loadProject()
   const account = getActiveAccount()
 
   let gitBranch = ''
   try {
-    const r = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'],
-      { cwd: project?.projectRoot || process.cwd(), encoding: 'utf8' })
+    const r = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+      cwd: project?.projectRoot || process.cwd(),
+      encoding: 'utf8',
+    })
     if (r.status === 0) gitBranch = r.stdout.trim()
-  } catch { /* skip */ }
+  } catch {
+    /* skip */
+  }
 
   const rendered = prompt.template
-    .replace(/\{\{project\}\}/g,   project?.name   || '')
-    .replace(/\{\{account\}\}/g,   account?.name   || '')
-    .replace(/\{\{date\}\}/g,      new Date().toISOString().slice(0, 10))
+    .replace(/\{\{project\}\}/g, project?.name || '')
+    .replace(/\{\{account\}\}/g, account?.name || '')
+    .replace(/\{\{date\}\}/g, new Date().toISOString().slice(0, 10))
     .replace(/\{\{gitBranch\}\}/g, gitBranch)
 
   // Increment usage counter
   const prompts = loadPrompts()
-  if (prompts[name]) { prompts[name].usedCount++; savePrompts(prompts) }
+  if (prompts[name]) {
+    prompts[name].usedCount++
+    savePrompts(prompts)
+  }
 
   return rendered
 }

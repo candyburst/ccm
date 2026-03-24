@@ -14,45 +14,59 @@ function fmtDate(iso) {
 }
 
 const REASON_COLOR = {
-  normal:                 'green',
-  credit_limit:           'yellow',
+  normal: 'green',
+  credit_limit: 'yellow',
   credit_limit_exhausted: 'red',
-  error:                  'red',
-  spawn_error:            'red',
-  interrupted:            'gray',
-  running:                'cyan',
+  error: 'red',
+  spawn_error: 'red',
+  interrupted: 'gray',
+  running: 'cyan',
 }
 
-const REASON_FILTERS = ['all', 'normal', 'credit_limit', 'credit_limit_exhausted', 'error', 'interrupted']
+const REASON_FILTERS = [
+  'all',
+  'normal',
+  'credit_limit',
+  'credit_limit_exhausted',
+  'error',
+  'interrupted',
+]
 
 export default function Sessions() {
-  const [sessions,      setSessions]      = useState([])
-  const [stats,         setStats]         = useState(null)
-  const [offset,        setOffset]        = useState(0)
-  const [confirm,       setConfirm]       = useState(false)
-  const [reasonFilter,  setReasonFilter]  = useState(0) // index into REASON_FILTERS
+  const [sessions, setSessions] = useState([])
+  const [stats, setStats] = useState(null)
+  const [offset, setOffset] = useState(0)
+  const [confirm, setConfirm] = useState(false)
+  const [reasonFilter, setReasonFilter] = useState(0) // index into REASON_FILTERS
   const PAGE = 8
 
   function refresh() {
     const filter = REASON_FILTERS[reasonFilter]
-    const opts   = { limit: 100 }
+    const opts = { limit: 100 }
     if (filter !== 'all') opts.exitReason = filter
     setSessions(getSessions(opts))
     setStats(getSessionStats())
     setOffset(0)
   }
 
-  useEffect(() => { refresh() }, [reasonFilter])
+  useEffect(() => {
+    refresh()
+  }, [reasonFilter])
 
   useInput((input, key) => {
     if (confirm) {
-      if (input === 'y') { clearSessions(); setConfirm(false); refresh() }
+      if (input === 'y') {
+        clearSessions()
+        setConfirm(false)
+        refresh()
+      }
       if (input === 'n' || key.escape) setConfirm(false)
       return
     }
 
-    if (key.downArrow || input === 'j') setOffset(o => Math.min(o + 1, Math.max(0, sessions.length - PAGE)))
-    if (key.upArrow   || input === 'k') setOffset(o => Math.max(0, o - 1))
+    if (key.downArrow || input === 'j')
+      setOffset(o => Math.min(o + 1, Math.max(0, sessions.length - PAGE)))
+    if (key.upArrow || input === 'k') setOffset(o => Math.max(0, o - 1))
     if (input === 'c') setConfirm(true)
 
     // r key cycles through reason filters
@@ -61,29 +75,40 @@ export default function Sessions() {
     }
   })
 
-  const page    = sessions.slice(offset, offset + PAGE)
-  const filter  = REASON_FILTERS[reasonFilter]
+  const page = sessions.slice(offset, offset + PAGE)
+  const filter = REASON_FILTERS[reasonFilter]
   const filterLabel = filter === 'all' ? 'all reasons' : filter.replace(/_/g, ' ')
 
-  if (confirm) return (
-    <Box flexDirection="column" gap={1}>
-      <Text color="yellow">Clear all session history? This cannot be undone.</Text>
-      <Text>Press <Text bold>y</Text> to confirm or <Text bold>n</Text> to cancel.</Text>
-    </Box>
-  )
+  if (confirm)
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color="yellow">Clear all session history? This cannot be undone.</Text>
+        <Text>
+          Press <Text bold>y</Text> to confirm or <Text bold>n</Text> to cancel.
+        </Text>
+      </Box>
+    )
 
   return (
     <Box flexDirection="column" gap={1}>
       <Box justifyContent="space-between">
         <Text bold>Sessions</Text>
-        <Text dimColor>filter: <Text color={filter === 'all' ? 'gray' : 'cyan'}>{filterLabel}</Text>  (r to cycle)</Text>
+        <Text dimColor>
+          filter: <Text color={filter === 'all' ? 'gray' : 'cyan'}>{filterLabel}</Text> (r to cycle)
+        </Text>
       </Box>
 
       {stats && (
         <Box gap={4}>
-          <Text dimColor>total: <Text color="cyan">{stats.total}</Text></Text>
-          <Text dimColor>time: <Text color="cyan">{fmtDuration(stats.totalSec)}</Text></Text>
-          <Text dimColor>switches: <Text color="yellow">{stats.switches}</Text></Text>
+          <Text dimColor>
+            total: <Text color="cyan">{stats.total}</Text>
+          </Text>
+          <Text dimColor>
+            time: <Text color="cyan">{fmtDuration(stats.totalSec)}</Text>
+          </Text>
+          <Text dimColor>
+            switches: <Text color="yellow">{stats.switches}</Text>
+          </Text>
         </Box>
       )}
 
@@ -94,7 +119,9 @@ export default function Sessions() {
       {page.map((s, i) => (
         <Box key={s.id} flexDirection="column" paddingX={1}>
           <Box gap={2}>
-            <Text bold color="white">{s.account}</Text>
+            <Text bold color="white">
+              {s.account}
+            </Text>
             {s.projectName && <Text dimColor>· {s.projectName}</Text>}
             <Text color={REASON_COLOR[s.exitReason] || 'gray'}>
               {s.exitReason?.replace(/_/g, ' ') ?? '—'}
@@ -106,10 +133,12 @@ export default function Sessions() {
       ))}
 
       {sessions.length > PAGE && (
-        <Text dimColor>{offset + 1}–{Math.min(offset + PAGE, sessions.length)} of {sessions.length}</Text>
+        <Text dimColor>
+          {offset + 1}–{Math.min(offset + PAGE, sessions.length)} of {sessions.length}
+        </Text>
       )}
 
-      <Text dimColor>↑↓ scroll  •  r: cycle reason filter  •  c: clear history  •  Esc: back</Text>
+      <Text dimColor>↑↓ scroll • r: cycle reason filter • c: clear history • Esc: back</Text>
     </Box>
   )
 }

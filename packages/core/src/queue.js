@@ -14,8 +14,11 @@ const MAX_RETRIES = 3
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 function loadQueue() {
-  try { return JSON.parse(readFileSync(QUEUE_FILE, 'utf8')) }
-  catch { return [] }
+  try {
+    return JSON.parse(readFileSync(QUEUE_FILE, 'utf8'))
+  } catch {
+    return []
+  }
 }
 
 function saveQueue(tasks) {
@@ -30,15 +33,15 @@ export function addTask(prompt, { projectRoot, name } = {}) {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
   tasks.push({
     id,
-    name:        name || prompt.slice(0, 40),
+    name: name || prompt.slice(0, 40),
     prompt,
     projectRoot: projectRoot || null,
-    status:      TASK_STATUS.PENDING,
-    retries:     0,
+    status: TASK_STATUS.PENDING,
+    retries: 0,
     accountUsed: null,
-    startedAt:   null,
+    startedAt: null,
     completedAt: null,
-    exitReason:  null,
+    exitReason: null,
   })
   saveQueue(tasks)
   return id
@@ -61,8 +64,12 @@ export function removeTask(id) {
 
 let _paused = false
 
-export function pauseQueue()  { _paused = true }
-export function resumeQueue() { _paused = false }
+export function pauseQueue() {
+  _paused = true
+}
+export function resumeQueue() {
+  _paused = false
+}
 
 /**
  * Work through the task queue unattended.
@@ -82,7 +89,7 @@ export async function runQueue(opts = {}) {
       continue
     }
 
-    const tasks   = loadQueue()
+    const tasks = loadQueue()
     const pending = tasks.find(t => t.status === 'pending')
     if (!pending) {
       debug('queue: all tasks complete')
@@ -96,7 +103,7 @@ export async function runQueue(opts = {}) {
     }
 
     // Mark as running
-    pending.status    = TASK_STATUS.RUNNING
+    pending.status = TASK_STATUS.RUNNING
     pending.startedAt = new Date().toISOString()
     pending.accountUsed = account.name
     saveQueue(tasks)
@@ -111,26 +118,26 @@ export async function runQueue(opts = {}) {
       // interactively and the user must paste the prompt manually.
       const result = await runClaude(account, ['--message', pending.prompt], {
         projectRoot: pending.projectRoot,
-        autoSwitch:  true,
+        autoSwitch: true,
       })
 
-      pending.status      = result.exhausted ? TASK_STATUS.FAILED : TASK_STATUS.DONE
-      pending.exitReason  = result.exhausted ? 'all_accounts_exhausted' : 'normal'
+      pending.status = result.exhausted ? TASK_STATUS.FAILED : TASK_STATUS.DONE
+      pending.exitReason = result.exhausted ? 'all_accounts_exhausted' : 'normal'
       pending.completedAt = new Date().toISOString()
-      saveQueue(loadQueue().map(t => t.id === pending.id ? pending : t))
+      saveQueue(loadQueue().map(t => (t.id === pending.id ? pending : t)))
       onTaskComplete?.(pending, result)
     } catch (e) {
       pending.retries++
       if (pending.retries >= MAX_RETRIES) {
-        pending.status     = TASK_STATUS.FAILED
+        pending.status = TASK_STATUS.FAILED
         pending.exitReason = `error: ${e.message}`
         pending.completedAt = new Date().toISOString()
         onTaskError?.(pending, e)
       } else {
-        pending.status = TASK_STATUS.PENDING  // retry
+        pending.status = TASK_STATUS.PENDING // retry
         debug(`queue: task "${pending.name}" failed, retrying (${pending.retries}/${MAX_RETRIES})`)
       }
-      saveQueue(loadQueue().map(t => t.id === pending.id ? pending : t))
+      saveQueue(loadQueue().map(t => (t.id === pending.id ? pending : t)))
     }
   }
 }

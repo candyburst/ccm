@@ -28,20 +28,14 @@ describe('watchClaude', () => {
       .mockResolvedValueOnce({ code: 1, account: { name: 'work' } })
       .mockResolvedValueOnce({ code: 0, account: { name: 'work' } })
 
-    const result = await watchClaude(
-      { name: 'work' }, [],
-      { maxFailures: 5 }
-    )
+    const result = await watchClaude({ name: 'work' }, [], { maxFailures: 5 })
     expect(result.code).toBe(0)
     expect(runClaude).toHaveBeenCalledTimes(3)
   }, 10000)
 
   it('stops after maxFailures consecutive failures', async () => {
     runClaude.mockResolvedValue({ code: 1, account: { name: 'work' } })
-    const result = await watchClaude(
-      { name: 'work' }, [],
-      { maxFailures: 3 }
-    )
+    const result = await watchClaude({ name: 'work' }, [], { maxFailures: 3 })
     expect(runClaude).toHaveBeenCalledTimes(3)
     expect(result.code).toBe(1)
   }, 10000)

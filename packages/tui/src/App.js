@@ -16,21 +16,30 @@ const SCREENS = ['dashboard', 'run', 'add-account', 'projects', 'sessions', 'syn
 
 export default function App({ args = [] }) {
   const { exit } = useApp()
-  const [screen,      setScreen]      = useState('dashboard')
-  const [prevScreen,  setPrevScreen]  = useState(null)
-  const [needsSetup,  setNeedsSetup]  = useState(null)
+  const [screen, setScreen] = useState('dashboard')
+  const [prevScreen, setPrevScreen] = useState(null)
+  const [needsSetup, setNeedsSetup] = useState(null)
 
   useEffect(() => {
     setNeedsSetup(listAccounts().length === 0)
   }, [])
 
-  function go(s) { setPrevScreen(screen); setScreen(s) }
-  function back() { setScreen(prevScreen || 'dashboard'); setPrevScreen(null) }
+  function go(s) {
+    setPrevScreen(screen)
+    setScreen(s)
+  }
+  function back() {
+    setScreen(prevScreen || 'dashboard')
+    setPrevScreen(null)
+  }
 
   useInput((input, key) => {
     if (needsSetup) return
     if (key.escape || input === 'q') {
-      if (screen !== 'dashboard') { back(); return }
+      if (screen !== 'dashboard') {
+        back()
+        return
+      }
       exit()
     }
     if (key.tab) {
@@ -41,11 +50,12 @@ export default function App({ args = [] }) {
 
   if (needsSetup === null) return null
 
-  if (needsSetup) return (
-    <Box flexDirection="column" width="100%" paddingX={2}>
-      <Onboard onComplete={() => setNeedsSetup(false)} />
-    </Box>
-  )
+  if (needsSetup)
+    return (
+      <Box flexDirection="column" width="100%" paddingX={2}>
+        <Onboard onComplete={() => setNeedsSetup(false)} />
+      </Box>
+    )
 
   const props = { go, back }
 
@@ -53,13 +63,13 @@ export default function App({ args = [] }) {
     <Box flexDirection="column" width="100%">
       <Header screen={screen} />
       <Box flexGrow={1} flexDirection="column" paddingX={1}>
-        {screen === 'dashboard'   && <Dashboard  {...props} />}
-        {screen === 'run'         && <Run        {...props} />}
+        {screen === 'dashboard' && <Dashboard {...props} />}
+        {screen === 'run' && <Run {...props} />}
         {screen === 'add-account' && <AddAccount {...props} />}
-        {screen === 'projects'    && <Projects   {...props} />}
-        {screen === 'sessions'    && <Sessions   {...props} />}
-        {screen === 'sync'        && <Sync       {...props} />}
-        {screen === 'settings'    && <Settings   {...props} />}
+        {screen === 'projects' && <Projects {...props} />}
+        {screen === 'sessions' && <Sessions {...props} />}
+        {screen === 'sync' && <Sync {...props} />}
+        {screen === 'settings' && <Settings {...props} />}
       </Box>
       <StatusBar screen={screen} />
     </Box>

@@ -17,7 +17,7 @@ export function copyDirSync(src, dest) {
   // Manual fallback (should never be needed on Node 18+ but keeps us safe)
   mkdirSync(dest, { recursive: true })
   for (const entry of readdirSync(src)) {
-    const srcPath  = join(src, entry)
+    const srcPath = join(src, entry)
     const destPath = join(dest, entry)
     if (statSync(srcPath).isDirectory()) {
       copyDirSync(srcPath, destPath)

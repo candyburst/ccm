@@ -17,7 +17,7 @@
     "./serve": "./src/serve.js",
     "./plugins": "./src/plugins.js"
   },
-  "description": "Core library for CCM \u2014 Claude Code account management, session transfer, smart resume",
+  "description": "Core library for CCM — Claude Code account management, session transfer, smart resume",
   "keywords": [
     "claude",
     "claude-code",

@@ -2,7 +2,14 @@ import { spawnSync } from 'child_process'
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { CONFIG_FILE, CCM_DIR } from './config.js'
-import { isGitRepo, hasRemote, getGitBranch, gitCheckpoint, loadSyncConfig, saveSyncConfig } from './checkpoint.js'
+import {
+  isGitRepo,
+  hasRemote,
+  getGitBranch,
+  gitCheckpoint,
+  loadSyncConfig,
+  saveSyncConfig,
+} from './checkpoint.js'
 
 // ── Status ────────────────────────────────────────────────────────────────────
 
@@ -16,19 +23,19 @@ export function getGitStatus(projectRoot) {
     return { ok: r.status === 0, out: (r.stdout || '').trim() }
   }
 
-  const branch      = getGitBranch(projectRoot)
-  const remote      = hasRemote(projectRoot)
+  const branch = getGitBranch(projectRoot)
+  const remote = hasRemote(projectRoot)
   const statusLines = git(['status', '--porcelain']).out.split('\n').filter(Boolean)
-  const ahead       = git(['rev-list', '--count', 'HEAD@{upstream}..HEAD']).out
-  const lastCommit  = git(['log', '-1', '--format=%h %s %cr']).out
+  const ahead = git(['rev-list', '--count', 'HEAD@{upstream}..HEAD']).out
+  const lastCommit = git(['log', '-1', '--format=%h %s %cr']).out
 
   return {
     isGitRepo: true,
     branch,
-    hasRemote:   remote,
-    isDirty:     statusLines.length > 0,
+    hasRemote: remote,
+    isDirty: statusLines.length > 0,
     changedFiles: statusLines.length,
-    aheadCount:  parseInt(ahead) || 0,
+    aheadCount: parseInt(ahead) || 0,
     lastCommit,
   }
 }
@@ -57,7 +64,9 @@ export async function pushProject(projectRoot, { message = 'checkpoint' } = {}) 
       const proj = JSON.parse(readFileSync(projFile, 'utf8'))
       if (proj.remote) remote = proj.remote
     }
-  } catch { /* use origin */ }
+  } catch {
+    /* use origin */
+  }
 
   return gitCheckpoint(projectRoot, { message, push: true, remote })
 }
@@ -72,8 +81,11 @@ export function validateRemoteUrl(url) {
   // HTTPS format: https://any-host/path — accepts GitHub, GitLab, Bitbucket, self-hosted
   const isHTTPS = /^https?:\/\/.+\/.+/.test(trimmed)
   if (!isSSH && !isHTTPS) {
-    return { valid: false, reason: 'unrecognised_format',
-      hint: 'Use SSH (git@host:org/repo.git) or HTTPS (https://host/org/repo)' }
+    return {
+      valid: false,
+      reason: 'unrecognised_format',
+      hint: 'Use SSH (git@host:org/repo.git) or HTTPS (https://host/org/repo)',
+    }
   }
   return { valid: true, isSSH, isHTTPS }
 }
@@ -82,7 +94,8 @@ export function validateRemoteUrl(url) {
 
 export function testRemote(url) {
   const r = spawnSync('git', ['ls-remote', '--exit-code', url, 'HEAD'], {
-    encoding: 'utf8', timeout: 15000,
+    encoding: 'utf8',
+    timeout: 15000,
   })
   return { reachable: r.status === 0, detail: (r.stderr || '').trim() }
 }

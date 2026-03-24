@@ -21,7 +21,7 @@ export function buildProviderEnv(account, rawKey) {
   switch (provider) {
     case PROVIDERS.ANTHROPIC:
       return {
-        ANTHROPIC_API_KEY:  rawKey,
+        ANTHROPIC_API_KEY: rawKey,
         ANTHROPIC_BASE_URL: undefined, // ensure we always hit Anthropic directly
       }
 
@@ -54,9 +54,7 @@ export function providerUsesEmail(provider) {
  * Only ANTHROPIC and EMAIL are verified with Claude Code.
  */
 export function providerIsSupported(provider) {
-  return [PROVIDERS.ANTHROPIC, PROVIDERS.EMAIL].includes(
-    provider || PROVIDERS.ANTHROPIC
-  )
+  return [PROVIDERS.ANTHROPIC, PROVIDERS.EMAIL].includes(provider || PROVIDERS.ANTHROPIC)
 }
 
 /**
@@ -65,7 +63,7 @@ export function providerIsSupported(provider) {
 export function providerLabel(provider) {
   const labels = {
     [PROVIDERS.ANTHROPIC]: 'Anthropic API',
-    [PROVIDERS.EMAIL]:     'Email (Claude Max / Pro)',
+    [PROVIDERS.EMAIL]: 'Email (Claude Max / Pro)',
   }
   return labels[provider] || provider
 }

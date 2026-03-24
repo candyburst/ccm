@@ -10,21 +10,19 @@ import { loadSyncConfig } from './checkpoint.js'
 import { runClaude } from './runner.js'
 import { debug } from './debug.js'
 
-const DEFAULT_PORT = 7838  // different from web dashboard (7837)
+const DEFAULT_PORT = 7838 // different from web dashboard (7837)
 
 // ── HMAC auth ─────────────────────────────────────────────────────────────────
 
 function signMessage(payload, token) {
-  return createHmac('sha256', token)
-    .update(JSON.stringify(payload))
-    .digest('hex')
+  return createHmac('sha256', token).update(JSON.stringify(payload)).digest('hex')
 }
 
 function verifyMessage(payload, sig, token) {
   const expected = signMessage(payload, token)
   // timingSafeEqual prevents timing oracle attacks on the HMAC signature
   try {
-    const a = Buffer.from(sig,      'hex')
+    const a = Buffer.from(sig, 'hex')
     const b = Buffer.from(expected, 'hex')
     if (a.length !== b.length) return false
     return timingSafeEqual(a, b)
@@ -47,12 +45,16 @@ function verifyMessage(payload, sig, token) {
  */
 export function startAgentServer({ port = DEFAULT_PORT, token } = {}) {
   const authToken = token || randomBytes(24).toString('hex')
-  const clients   = new Set()  // active SSE connections
+  const clients = new Set() // active SSE connections
 
   function broadcast(event, data) {
     const msg = `data: ${JSON.stringify({ event, data, ts: Date.now() })}\n\n`
     for (const c of clients) {
-      try { c.write(msg) } catch { clients.delete(c) }
+      try {
+        c.write(msg)
+      } catch {
+        clients.delete(c)
+      }
     }
   }
 
@@ -61,8 +63,8 @@ export function startAgentServer({ port = DEFAULT_PORT, token } = {}) {
 
     // Auth check
     const tok = req.headers['x-ccm-token'] || url.searchParams.get('token') || ''
-    const tokOk = tok.length === authToken.length &&
-      timingSafeEqual(Buffer.from(tok), Buffer.from(authToken))
+    const tokOk =
+      tok.length === authToken.length && timingSafeEqual(Buffer.from(tok), Buffer.from(authToken))
     if (!tokOk) {
       res.writeHead(401, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ error: 'unauthorized' }))
@@ -72,16 +74,16 @@ export function startAgentServer({ port = DEFAULT_PORT, token } = {}) {
     // SSE stream
     if (req.method === 'GET' && url.pathname === '/stream') {
       res.writeHead(200, {
-        'Content-Type':  'text/event-stream',
+        'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection':    'keep-alive',
+        Connection: 'keep-alive',
       })
       clients.add(res)
       // Send initial snapshot
       broadcast('snapshot', {
         accounts: listAccounts().map(a => ({ name: a.name, type: a.type, active: a.active })),
         sessions: getSessions({ limit: 20 }),
-        stats:    getSessionStats(),
+        stats: getSessionStats(),
       })
       req.on('close', () => clients.delete(res))
       return
@@ -90,7 +92,7 @@ export function startAgentServer({ port = DEFAULT_PORT, token } = {}) {
     // Command endpoint
     if (req.method === 'POST' && url.pathname === '/cmd') {
       let body = ''
-      req.on('data', c => body += c)
+      req.on('data', c => (body += c))
       req.on('end', async () => {
         try {
           const { cmd, args, sig } = JSON.parse(body)
@@ -105,7 +107,12 @@ export function startAgentServer({ port = DEFAULT_PORT, token } = {}) {
           let result = null
 
           if (cmd === 'accounts:list') {
-            result = listAccounts().map(a => ({ name: a.name, type: a.type, active: a.active, disabled: a.disabled }))
+            result = listAccounts().map(a => ({
+              name: a.name,
+              type: a.type,
+              active: a.active,
+              disabled: a.disabled,
+            }))
           } else if (cmd === 'sessions:list') {
             result = getSessions({ limit: args?.limit || 50 })
           } else if (cmd === 'stats') {
@@ -120,12 +127,12 @@ export function startAgentServer({ port = DEFAULT_PORT, token } = {}) {
             ;(async () => {
               try {
                 const r = await runClaude(account, flags, {
-                  autoSwitch:  true,
+                  autoSwitch: true,
                   projectRoot: args.projectRoot,
-                  onSwitch:    (from, to)  => broadcast('switch', { from, to }),
-                  onStdout:    (txt)       => broadcast('stdout', { text: txt }),
-                  onLog:       (txt)       => broadcast('stderr', { text: txt }),
-                  onCheckpoint:(r)         => broadcast('checkpoint', { result: r }),
+                  onSwitch: (from, to) => broadcast('switch', { from, to }),
+                  onStdout: txt => broadcast('stdout', { text: txt }),
+                  onLog: txt => broadcast('stderr', { text: txt }),
+                  onCheckpoint: r => broadcast('checkpoint', { result: r }),
                 })
                 broadcast('session:end', r)
               } catch (e) {

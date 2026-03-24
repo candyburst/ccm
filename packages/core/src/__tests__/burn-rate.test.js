@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { accountBurnRate, estimateTimeRemaining, formatTimeRemaining, burnRateAlertLevel, getAllBurnRates } from '../burn-rate.js'
+import {
+  accountBurnRate,
+  estimateTimeRemaining,
+  formatTimeRemaining,
+  burnRateAlertLevel,
+  getAllBurnRates,
+} from '../burn-rate.js'
 
 // Mock getSessions
 vi.mock('../sessions.js', () => ({
@@ -24,14 +30,24 @@ describe('accountBurnRate', () => {
 
   it('returns null when durationSec is zero', () => {
     getSessions.mockReturnValue([
-      { account: 'work', durationSec: 0, exitReason: 'normal', tokens: { input: 1000, output: 500 } },
+      {
+        account: 'work',
+        durationSec: 0,
+        exitReason: 'normal',
+        tokens: { input: 1000, output: 500 },
+      },
     ])
     expect(accountBurnRate('work')).toBeNull()
   })
 
   it('computes correct tokens-per-second', () => {
     getSessions.mockReturnValue([
-      { account: 'work', durationSec: 100, exitReason: 'normal', tokens: { input: 800, output: 200 } },
+      {
+        account: 'work',
+        durationSec: 100,
+        exitReason: 'normal',
+        tokens: { input: 800, output: 200 },
+      },
     ])
     // 1000 tokens / 100 sec = 10 tps
     expect(accountBurnRate('work')).toBe(10)
@@ -42,7 +58,7 @@ describe('accountBurnRate', () => {
     // With weights 1 and 2: (5*1 + 20*2) / 3 = 15
     getSessions.mockReturnValue([
       { account: 'x', durationSec: 100, exitReason: 'normal', tokens: { input: 2000, output: 0 } }, // 20 tps, weight 2
-      { account: 'x', durationSec: 100, exitReason: 'normal', tokens: { input: 500, output: 0 } },  // 5 tps,  weight 1
+      { account: 'x', durationSec: 100, exitReason: 'normal', tokens: { input: 500, output: 0 } }, // 5 tps,  weight 1
     ])
     const rate = accountBurnRate('x')
     expect(rate).toBe(15)
@@ -71,7 +87,12 @@ describe('estimateTimeRemaining', () => {
 
   it('computes correct estimate', () => {
     getSessions.mockReturnValue([
-      { account: 'work', durationSec: 100, exitReason: 'normal', tokens: { input: 1000, output: 0 } },
+      {
+        account: 'work',
+        durationSec: 100,
+        exitReason: 'normal',
+        tokens: { input: 1000, output: 0 },
+      },
     ])
     // 10 tps, 3000 remaining → 300 seconds
     expect(estimateTimeRemaining('work', 3000)).toBe(300)

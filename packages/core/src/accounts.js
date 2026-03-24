@@ -14,8 +14,11 @@ function ensureDirs() {
 export function loadAccounts() {
   ensureDirs()
   if (!existsSync(ACCOUNTS_FILE)) return {}
-  try { return JSON.parse(readFileSync(ACCOUNTS_FILE, 'utf8')) }
-  catch { return {} }
+  try {
+    return JSON.parse(readFileSync(ACCOUNTS_FILE, 'utf8'))
+  } catch {
+    return {}
+  }
 }
 
 // Atomic write: write to .tmp then rename — prevents corruption on crash
@@ -55,7 +58,8 @@ export async function addApiKeyAccount(name, apiKey, notes = '') {
   if (!check.valid) throw new Error(check.hint || `Invalid API key: ${check.reason}`)
 
   accounts[name] = {
-    name, type: AUTH.API_KEY,
+    name,
+    type: AUTH.API_KEY,
     encryptedKey: encrypt(apiKey),
     notes,
     active: false,
@@ -73,8 +77,10 @@ export function addEmailAccount(name, email, notes = '') {
   const sessionDir = join(SESSIONS_DIR, name)
   mkdirSync(sessionDir, { recursive: true })
   accounts[name] = {
-    name, type: AUTH.EMAIL,
-    email, sessionDir,
+    name,
+    type: AUTH.EMAIL,
+    email,
+    sessionDir,
     notes,
     active: false,
     disabled: false,
@@ -115,6 +121,9 @@ export function setActiveAccount(name) {
 export function getApiKey(account) {
   if (account.type !== AUTH.API_KEY) throw new Error('Not an API key account')
   const key = decrypt(account.encryptedKey)
-  if (!key) throw new Error(`Failed to decrypt API key for "${account.name}" — key may be from a different machine`)
+  if (!key)
+    throw new Error(
+      `Failed to decrypt API key for "${account.name}" — key may be from a different machine`
+    )
   return key
 }

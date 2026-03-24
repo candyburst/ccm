@@ -9,15 +9,17 @@ import { getApiKey } from './accounts.js'
 import { loadSyncConfig } from './checkpoint.js'
 import { debug } from './debug.js'
 
-const DEFAULT_THRESHOLD    = 120000  // tokens — compress if session exceeds this
-const DEFAULT_KEEP_RECENT  = 20      // keep last N messages verbatim
-const CHARS_PER_TOKEN      = 4
+const DEFAULT_THRESHOLD = 120000 // tokens — compress if session exceeds this
+const DEFAULT_KEEP_RECENT = 20 // keep last N messages verbatim
+const CHARS_PER_TOKEN = 4
 
 function estimateTokens(jsonlPath) {
   try {
     const size = readFileSync(jsonlPath, 'utf8').length
     return Math.round(size / CHARS_PER_TOKEN)
-  } catch { return 0 }
+  } catch {
+    return 0
+  }
 }
 
 function parseMessages(jsonlPath) {
@@ -25,10 +27,18 @@ function parseMessages(jsonlPath) {
     return readFileSync(jsonlPath, 'utf8')
       .split('\n')
       .filter(Boolean)
-      .map(l => { try { return JSON.parse(l) } catch { return null } })
+      .map(l => {
+        try {
+          return JSON.parse(l)
+        } catch {
+          return null
+        }
+      })
       .filter(Boolean)
       .filter(m => m && (m.type || m.role))
-  } catch { return [] }
+  } catch {
+    return []
+  }
 }
 
 function serialiseMessages(messages) {
@@ -38,33 +48,40 @@ function serialiseMessages(messages) {
 async function summariseWithAPI(messages, apiKey) {
   const transcript = messages
     .map(m => {
-      const role    = m.type || m.role
-      const content = typeof m.content === 'string'
-        ? m.content
-        : Array.isArray(m.content)
-          ? m.content.map(c => c.text || c.input || '').filter(Boolean).join(' ')
-          : ''
+      const role = m.type || m.role
+      const content =
+        typeof m.content === 'string'
+          ? m.content
+          : Array.isArray(m.content)
+            ? m.content
+                .map(c => c.text || c.input || '')
+                .filter(Boolean)
+                .join(' ')
+            : ''
       return `${role === 'human' ? 'User' : 'Assistant'}: ${content.slice(0, 800)}`
     })
     .join('\n\n')
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:  'POST',
+      method: 'POST',
       headers: {
-        'Content-Type':      'application/json',
+        'Content-Type': 'application/json',
         'anthropic-version': '2023-06-01',
-        'x-api-key':         apiKey,
+        'x-api-key': apiKey,
       },
       body: JSON.stringify({
-        model:      'claude-haiku-4-5-20251001',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
-        messages: [{
-          role:    'user',
-          content: `Summarise this conversation history. Preserve all decisions made, ` +
-                   `files changed, errors encountered, and open questions. ` +
-                   `Be concise but complete.\n\n${transcript}`,
-        }],
+        messages: [
+          {
+            role: 'user',
+            content:
+              `Summarise this conversation history. Preserve all decisions made, ` +
+              `files changed, errors encountered, and open questions. ` +
+              `Be concise but complete.\n\n${transcript}`,
+          },
+        ],
       }),
     })
 
@@ -92,8 +109,8 @@ async function summariseWithAPI(messages, apiKey) {
  * @param {boolean}[opts.dryRun]      - Report only, make no changes
  */
 export async function compressSession(jsonlPath, account, opts = {}) {
-  const threshold   = opts.threshold   ?? DEFAULT_THRESHOLD
-  const keepRecent  = opts.keepRecent  ?? DEFAULT_KEEP_RECENT
+  const threshold = opts.threshold ?? DEFAULT_THRESHOLD
+  const keepRecent = opts.keepRecent ?? DEFAULT_KEEP_RECENT
 
   if (!existsSync(jsonlPath)) {
     return { skipped: true, reason: 'file_not_found' }
@@ -110,11 +127,13 @@ export async function compressSession(jsonlPath, account, opts = {}) {
   }
 
   const toSummarise = messages.slice(0, messages.length - keepRecent)
-  const toKeep      = messages.slice(messages.length - keepRecent)
+  const toKeep = messages.slice(messages.length - keepRecent)
 
   if (opts.dryRun) {
     return {
-      skipped: false, dryRun: true, originalTokens,
+      skipped: false,
+      dryRun: true,
+      originalTokens,
       messagesToSummarise: toSummarise.length,
       messagesToKeep: toKeep.length,
     }
@@ -125,8 +144,11 @@ export async function compressSession(jsonlPath, account, opts = {}) {
   if (!opts.explicitlyEnabled) {
     const cfg = loadSyncConfig()
     if (!cfg.compressionEnabled) {
-      return { skipped: true, reason: 'disabled',
-        hint: 'Run: ccm sync on compression  (sends session text to Anthropic API)' }
+      return {
+        skipped: true,
+        reason: 'disabled',
+        hint: 'Run: ccm sync on compression  (sends session text to Anthropic API)',
+      }
     }
   }
 
@@ -134,7 +156,9 @@ export async function compressSession(jsonlPath, account, opts = {}) {
   let apiKey = null
   try {
     apiKey = account ? getApiKey(account) : null
-  } catch { /* key unavailable */ }
+  } catch {
+    /* key unavailable */
+  }
 
   if (!apiKey) {
     return { skipped: true, reason: 'no_api_key' }
@@ -147,17 +171,17 @@ export async function compressSession(jsonlPath, account, opts = {}) {
   }
 
   // Back up original
-  const label      = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-  const name       = basename(jsonlPath, '.jsonl')
-  const backupDir  = join(CHECKPOINTS_DIR, '_compressed')
+  const label = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+  const name = basename(jsonlPath, '.jsonl')
+  const backupDir = join(CHECKPOINTS_DIR, '_compressed')
   mkdirSync(backupDir, { recursive: true })
   const backupPath = join(backupDir, `${label}-${name}-original.jsonl`)
   copyFileSync(jsonlPath, backupPath)
 
   // Write compressed
   const summaryMessage = {
-    type:    'human',
-    role:    'human',
+    type: 'human',
+    role: 'human',
     content: `[Session context summary — ${toSummarise.length} earlier messages compressed]\n\n${summary}`,
   }
   writeFileSync(jsonlPath, serialiseMessages([summaryMessage, ...toKeep]))

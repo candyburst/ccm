@@ -1,31 +1,44 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Mock filesystem before importing accounts
-vi.mock('fs', async (orig) => {
+vi.mock('fs', async orig => {
   const actual = await orig()
   let store = '{}'
   return {
     ...actual,
-    existsSync:    vi.fn((p) => p.includes('accounts') ? store !== '{}' : actual.existsSync(p)),
-    readFileSync:  vi.fn((p, enc) => p.includes('accounts') ? store : actual.readFileSync(p, enc)),
-    writeFileSync: vi.fn((p, d) => { if (p.includes('accounts') || p.endsWith('.tmp')) store = d }),
-    renameSync:    vi.fn(),
-    mkdirSync:     vi.fn(),
-    _reset:        () => { store = '{}' },
+    existsSync: vi.fn(p => (p.includes('accounts') ? store !== '{}' : actual.existsSync(p))),
+    readFileSync: vi.fn((p, enc) => (p.includes('accounts') ? store : actual.readFileSync(p, enc))),
+    writeFileSync: vi.fn((p, d) => {
+      if (p.includes('accounts') || p.endsWith('.tmp')) store = d
+    }),
+    renameSync: vi.fn(),
+    mkdirSync: vi.fn(),
+    _reset: () => {
+      store = '{}'
+    },
   }
 })
 vi.mock('../crypto.js', () => ({
   encrypt: vi.fn(text => `ENC:${text}`),
-  decrypt: vi.fn(blob => blob.startsWith('ENC:') ? blob.slice(4) : null),
+  decrypt: vi.fn(blob => (blob.startsWith('ENC:') ? blob.slice(4) : null)),
 }))
 vi.mock('../validate.js', () => ({
-  validateApiKey: vi.fn(async (key) => {
+  validateApiKey: vi.fn(async key => {
     if (key === 'sk-ant-invalid') return { valid: false, reason: 'rejected', hint: 'bad key' }
     return { valid: true }
   }),
 }))
 
-import { addApiKeyAccount, addEmailAccount, listAccounts, getActiveAccount, setActiveAccount, removeAccount, updateAccount, getApiKey } from '../accounts.js'
+import {
+  addApiKeyAccount,
+  addEmailAccount,
+  listAccounts,
+  getActiveAccount,
+  setActiveAccount,
+  removeAccount,
+  updateAccount,
+  getApiKey,
+} from '../accounts.js'
 
 describe('accounts', () => {
   beforeEach(() => {

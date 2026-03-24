@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { buildProviderEnv, providerUsesApiKey, providerUsesEmail, providerIsSupported, providerLabel, providerAuthType } from '../providers.js'
+import {
+  buildProviderEnv,
+  providerUsesApiKey,
+  providerUsesEmail,
+  providerIsSupported,
+  providerLabel,
+  providerAuthType,
+} from '../providers.js'
 import { PROVIDERS } from '../config.js'
 
 describe('buildProviderEnv — ANTHROPIC', () => {

@@ -9,34 +9,57 @@ import { mkdirSync, writeFileSync, existsSync } from 'fs'
 // ── Full switch flow ──────────────────────────────────────────────────────────
 // Mock claude binary: first invocation prints credit-limit error, second exits 0
 
-vi.mock('../sessions.js',         () => ({ startSession: vi.fn(() => 'sess-1'), endSession: vi.fn(), cleanupOrphanedSessions: vi.fn() }))
-vi.mock('../checkpoint.js',       () => ({ loadSyncConfig: vi.fn(() => ({ autoSwitch: true, smartResume: false, gitCheckpoint: false })), backupSessionFile: vi.fn() }))
-vi.mock('../session-transfer.js', () => ({ findLatestSession: vi.fn(() => null), transferSession: vi.fn() }))
-vi.mock('../github-sync.js',      () => ({ pushProject: vi.fn() }))
-vi.mock('../isolation.js',        () => ({ getIsolationEnv: vi.fn(() => ({})), prepareIsolation: vi.fn(() => () => {}), getIsolationMethod: vi.fn(() => 'env') }))
-vi.mock('../plugins.js',          () => ({ loadPlugins: vi.fn(async () => []), firePluginEvent: vi.fn(async () => {}) }))
-vi.mock('../hooks.js',            () => ({ ensureHooksRegistered: vi.fn() }))
+vi.mock('../sessions.js', () => ({
+  startSession: vi.fn(() => 'sess-1'),
+  endSession: vi.fn(),
+  cleanupOrphanedSessions: vi.fn(),
+}))
+vi.mock('../checkpoint.js', () => ({
+  loadSyncConfig: vi.fn(() => ({ autoSwitch: true, smartResume: false, gitCheckpoint: false })),
+  backupSessionFile: vi.fn(),
+}))
+vi.mock('../session-transfer.js', () => ({
+  findLatestSession: vi.fn(() => null),
+  transferSession: vi.fn(),
+}))
+vi.mock('../github-sync.js', () => ({ pushProject: vi.fn() }))
+vi.mock('../isolation.js', () => ({
+  getIsolationEnv: vi.fn(() => ({})),
+  prepareIsolation: vi.fn(() => () => {}),
+  getIsolationMethod: vi.fn(() => 'env'),
+}))
+vi.mock('../plugins.js', () => ({
+  loadPlugins: vi.fn(async () => []),
+  firePluginEvent: vi.fn(async () => {}),
+}))
+vi.mock('../hooks.js', () => ({ ensureHooksRegistered: vi.fn() }))
 vi.mock('../context-injector.js', () => ({ buildContextMessage: vi.fn(() => null) }))
-vi.mock('../resume-verify.js',    () => ({ detectResumeOutcome: vi.fn(() => 'unknown'), extractSessionSummary: vi.fn(() => null) }))
-vi.mock('../crypto.js',           () => ({ encrypt: vi.fn(k => `ENC:${k}`), decrypt: vi.fn(b => b.startsWith('ENC:') ? b.slice(4) : null) }))
+vi.mock('../resume-verify.js', () => ({
+  detectResumeOutcome: vi.fn(() => 'unknown'),
+  extractSessionSummary: vi.fn(() => null),
+}))
+vi.mock('../crypto.js', () => ({
+  encrypt: vi.fn(k => `ENC:${k}`),
+  decrypt: vi.fn(b => (b.startsWith('ENC:') ? b.slice(4) : null)),
+}))
 
-import { runClaude }   from '../runner.js'
-import { spawn }       from 'child_process'
+import { runClaude } from '../runner.js'
+import { spawn } from 'child_process'
 import { EventEmitter } from 'events'
 
 vi.mock('child_process', () => ({ spawn: vi.fn() }))
 
 vi.mock('../accounts.js', () => ({
-  getApiKey:         vi.fn(() => 'sk-ant-key'),
-  setActiveAccount:  vi.fn(),
-  listAccounts:      vi.fn(),
+  getApiKey: vi.fn(() => 'sk-ant-key'),
+  setActiveAccount: vi.fn(),
+  listAccounts: vi.fn(),
 }))
 
 function mockProcess(exitCode, stderrData = []) {
   const child = new EventEmitter()
   child.stdout = new EventEmitter()
   child.stderr = new EventEmitter()
-  child.stdin  = { write: vi.fn(), end: vi.fn() }
+  child.stdin = { write: vi.fn(), end: vi.fn() }
   setTimeout(() => {
     for (const d of stderrData) child.stderr.emit('data', Buffer.from(d))
     child.stdout.emit('data', Buffer.from(''))
@@ -46,8 +69,20 @@ function mockProcess(exitCode, stderrData = []) {
 }
 
 describe('full account switch flow', () => {
-  const work   = { name: 'work',   type: 'api_key', provider: 'anthropic', disabled: false, priority: 0 }
-  const backup = { name: 'backup', type: 'api_key', provider: 'anthropic', disabled: false, priority: 1 }
+  const work = {
+    name: 'work',
+    type: 'api_key',
+    provider: 'anthropic',
+    disabled: false,
+    priority: 0,
+  }
+  const backup = {
+    name: 'backup',
+    type: 'api_key',
+    provider: 'anthropic',
+    disabled: false,
+    priority: 1,
+  }
 
   beforeEach(() => vi.clearAllMocks())
 
@@ -55,18 +90,16 @@ describe('full account switch flow', () => {
     const { listAccounts } = await import('../accounts.js')
     listAccounts
       .mockReturnValueOnce([work, backup]) // initial call
-      .mockReturnValue([work, backup])     // rotation calls
+      .mockReturnValue([work, backup]) // rotation calls
 
     let call = 0
     spawn.mockImplementation(() => {
       call++
-      return call === 1
-        ? mockProcess(1, ['Error: credit balance is too low'])
-        : mockProcess(0)
+      return call === 1 ? mockProcess(1, ['Error: credit balance is too low']) : mockProcess(0)
     })
 
     const onSwitch = vi.fn()
-    const result   = await runClaude(work, [], { autoSwitch: true, onSwitch })
+    const result = await runClaude(work, [], { autoSwitch: true, onSwitch })
 
     expect(onSwitch).toHaveBeenCalledWith('work', 'backup')
     expect(result.code).toBe(0)
@@ -113,13 +146,16 @@ describe('full account switch flow', () => {
 describe('export → import round-trip', () => {
   it('API keys survive export with passphrase and reimport', async () => {
     const { exportAccounts, importAccounts } = await import('../export-import.js')
-    const { loadAccounts, getApiKey }        = await import('../accounts.js')
+    const { loadAccounts, getApiKey } = await import('../accounts.js')
 
     // Mock account data
     loadAccounts.mockReturnValue({
       work: {
-        name: 'work', type: 'api_key', notes: 'test',
-        disabled: false, priority: 0,
+        name: 'work',
+        type: 'api_key',
+        notes: 'test',
+        disabled: false,
+        priority: 0,
         createdAt: '2026-01-01T00:00:00.000Z',
       },
     })
@@ -146,7 +182,14 @@ describe('export → import round-trip', () => {
     const { loadAccounts, getApiKey } = await import('../accounts.js')
 
     loadAccounts.mockReturnValue({
-      work: { name: 'work', type: 'api_key', notes: '', disabled: false, priority: 0, createdAt: '2026-01-01T00:00:00.000Z' },
+      work: {
+        name: 'work',
+        type: 'api_key',
+        notes: '',
+        disabled: false,
+        priority: 0,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
     })
     getApiKey.mockReturnValue('sk-ant-key')
 

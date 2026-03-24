@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'fs'
 import { initProject, bindProject, loadProject, ensureGitignore } from '../projects.js'
 
 // Mock CCM config paths to use temp dirs
-vi.mock('../config.js', async (orig) => {
+vi.mock('../config.js', async orig => {
   const actual = await orig()
   return { ...actual }
 })
@@ -14,7 +14,10 @@ vi.mock('../checkpoint.js', () => ({
 }))
 
 function makeTempDir() {
-  const dir = join(tmpdir(), `ccm-projects-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  const dir = join(
+    tmpdir(),
+    `ccm-projects-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  )
   mkdirSync(dir, { recursive: true })
   return dir
 }
@@ -62,7 +65,7 @@ describe('loadProject', () => {
   })
 
   it('walks up to find project file', () => {
-    const dir    = makeTempDir()
+    const dir = makeTempDir()
     const subdir = join(dir, 'src', 'components')
     mkdirSync(subdir, { recursive: true })
     initProject(dir, 'work', 'my-app')

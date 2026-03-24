@@ -5,15 +5,15 @@ import SelectInput from 'ink-select-input'
 import { addApiKeyAccount, addEmailAccount, AUTH } from '@ccm/core'
 
 export default function AddAccount({ back }) {
-  const [step,    setStep]    = useState('type')
-  const [form,    setForm]    = useState({ type: '', name: '', key: '', email: '', notes: '' })
-  const [error,   setError]   = useState('')
-  const [input,   setInput]   = useState('')
-  const [busy,    setBusy]    = useState(false)
+  const [step, setStep] = useState('type')
+  const [form, setForm] = useState({ type: '', name: '', key: '', email: '', notes: '' })
+  const [error, setError] = useState('')
+  const [input, setInput] = useState('')
+  const [busy, setBusy] = useState(false)
 
   const typeItems = [
-    { label: 'API key  — paste an Anthropic API key',      value: AUTH.API_KEY },
-    { label: 'Email    — browser login (Claude Max / Pro)', value: AUTH.EMAIL   },
+    { label: 'API key  — paste an Anthropic API key', value: AUTH.API_KEY },
+    { label: 'Email    — browser login (Claude Max / Pro)', value: AUTH.EMAIL },
   ]
 
   async function next(field, value) {
@@ -22,7 +22,7 @@ export default function AddAccount({ back }) {
     setInput('')
     setError('')
 
-    if (step === 'type')  return setStep('name')
+    if (step === 'type') return setStep('name')
 
     if (step === 'name') {
       if (!value.trim()) return setError('Name is required')
@@ -63,21 +63,23 @@ export default function AddAccount({ back }) {
 
   // ── Type selection ──────────────────────────────────────────────────────────
 
-  if (step === 'type') return (
-    <Box flexDirection="column" gap={1}>
-      <Text bold>Add account — choose auth type</Text>
-      <SelectInput items={typeItems} onSelect={item => next('type', item.value)} />
-    </Box>
-  )
+  if (step === 'type')
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text bold>Add account — choose auth type</Text>
+        <SelectInput items={typeItems} onSelect={item => next('type', item.value)} />
+      </Box>
+    )
 
   // ── Saving / validating ─────────────────────────────────────────────────────
 
-  if (busy) return (
-    <Box flexDirection="column" gap={1}>
-      <Text color="yellow">⠋ Validating API key with Anthropic...</Text>
-      <Text dimColor>This takes a moment</Text>
-    </Box>
-  )
+  if (busy)
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color="yellow">⠋ Validating API key with Anthropic...</Text>
+        <Text dimColor>This takes a moment</Text>
+      </Box>
+    )
 
   // ── Done ────────────────────────────────────────────────────────────────────
 
@@ -85,11 +87,16 @@ export default function AddAccount({ back }) {
     const isEmail = form.type === AUTH.EMAIL
     return (
       <Box flexDirection="column" gap={1}>
-        <Text color="green">✓ Account "<Text bold>{form.name}</Text>" added.</Text>
+        <Text color="green">
+          ✓ Account "<Text bold>{form.name}</Text>" added.
+        </Text>
         {isEmail && (
           <Box flexDirection="column" gap={1}>
             <Text color="yellow">Next: authenticate this account by running:</Text>
-            <Text bold color="cyan">  ccm login {form.name}</Text>
+            <Text bold color="cyan">
+              {' '}
+              ccm login {form.name}
+            </Text>
             <Text dimColor>This opens a browser so Claude can log in as {form.email}</Text>
           </Box>
         )}
@@ -101,8 +108,8 @@ export default function AddAccount({ back }) {
   // ── Input form ──────────────────────────────────────────────────────────────
 
   const prompts = {
-    name:  'Account name (e.g. personal, work):',
-    key:   'Anthropic API key (sk-ant-...):',
+    name: 'Account name (e.g. personal, work):',
+    key: 'Anthropic API key (sk-ant-...):',
     email: 'Email address:',
     notes: 'Notes (optional — press Enter to skip):',
   }
@@ -124,7 +131,7 @@ export default function AddAccount({ back }) {
 
       {error && <Text color="red">✗ {error}</Text>}
 
-      <Text dimColor>Enter: confirm  •  Esc: back</Text>
+      <Text dimColor>Enter: confirm • Esc: back</Text>
     </Box>
   )
 }

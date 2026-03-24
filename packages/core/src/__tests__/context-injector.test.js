@@ -16,7 +16,7 @@ describe('buildContext', () => {
   })
 
   it('reads a real file', () => {
-    const dir  = join(tmpdir(), `ccm-test-${Date.now()}`)
+    const dir = join(tmpdir(), `ccm-test-${Date.now()}`)
     mkdirSync(dir, { recursive: true })
     writeFileSync(join(dir, 'README.md'), '# My Project\nThis is a test project.')
 

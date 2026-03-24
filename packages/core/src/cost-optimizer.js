@@ -19,8 +19,7 @@ const STRATEGIES = ['round-robin', 'cheapest', 'fastest', 'reserved', 'random']
  */
 export function selectAccount(exhausted = new Set(), opts = {}) {
   const strategy = opts.strategy || 'round-robin'
-  const accounts = listAccounts()
-    .filter(a => !a.disabled && !exhausted.has(a.name))
+  const accounts = listAccounts().filter(a => !a.disabled && !exhausted.has(a.name))
 
   if (accounts.length === 0) return null
 
@@ -46,7 +45,7 @@ export function selectAccount(exhausted = new Set(), opts = {}) {
     case 'fastest': {
       // Prefer accounts with lowest observed latency
       const sessions = getSessions({ limit: 200 })
-      const latency  = {}
+      const latency = {}
       for (const s of sessions) {
         if (s.firstTokenLatencyMs && s.account) {
           if (!latency[s.account]) latency[s.account] = []
@@ -55,9 +54,8 @@ export function selectAccount(exhausted = new Set(), opts = {}) {
       }
       const withLatency = accounts.map(a => {
         const lats = latency[a.name] || []
-        const p50  = lats.length > 0
-          ? lats.sort((x, y) => x - y)[Math.floor(lats.length / 2)]
-          : Infinity
+        const p50 =
+          lats.length > 0 ? lats.sort((x, y) => x - y)[Math.floor(lats.length / 2)] : Infinity
         return { ...a, p50 }
       })
       return withLatency.sort((a, b) => a.p50 - b.p50)[0]

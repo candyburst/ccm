@@ -2,6 +2,6 @@
 // Usage: import { debug } from './debug.js'; debug('message')
 const ENABLED = !!process.env.CCM_DEBUG
 
-export const debug = (msg) => {
+export const debug = msg => {
   if (ENABLED) process.stderr.write(`[ccm:debug] ${msg}\n`)
 }

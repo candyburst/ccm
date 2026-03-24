@@ -3,9 +3,9 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { CCM_DIR } from './config.js'
 
-const ALGO      = 'aes-256-gcm'
-const SALT      = 'ccm-v1-salt-2025'
-const KEY_FILE  = join(CCM_DIR, '.key')
+const ALGO = 'aes-256-gcm'
+const SALT = 'ccm-v1-salt-2025'
+const KEY_FILE = join(CCM_DIR, '.key')
 
 // ── Machine key ───────────────────────────────────────────────────────────────
 // Priority: CCM_SECRET env var → persisted random key in ~/.ccm/.key
@@ -31,9 +31,9 @@ function getMachineKey() {
 }
 
 export function encrypt(text) {
-  const iv  = randomBytes(12)
-  const k   = getMachineKey()
-  const c   = createCipheriv(ALGO, k, iv)
+  const iv = randomBytes(12)
+  const k = getMachineKey()
+  const c = createCipheriv(ALGO, k, iv)
   const enc = Buffer.concat([c.update(text, 'utf8'), c.final()])
   return [iv.toString('hex'), c.getAuthTag().toString('hex'), enc.toString('hex')].join(':')
 }
@@ -48,6 +48,6 @@ export function decrypt(blob) {
     d.setAuthTag(tag)
     return d.update(enc) + d.final('utf8')
   } catch {
-    return null  // tampered, wrong key, or malformed — never throw
+    return null // tampered, wrong key, or malformed — never throw
   }
 }

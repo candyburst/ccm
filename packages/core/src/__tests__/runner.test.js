@@ -1,19 +1,43 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Mock all side-effecting modules
-vi.mock('../sessions.js',        () => ({ startSession: vi.fn(() => 'sess-1'), endSession: vi.fn(), cleanupOrphanedSessions: vi.fn() }))
-vi.mock('../accounts.js',        () => ({ getApiKey: vi.fn(() => 'sk-ant-key'), setActiveAccount: vi.fn(), listAccounts: vi.fn(() => []) }))
-vi.mock('../checkpoint.js',      () => ({ loadSyncConfig: vi.fn(() => ({ autoSwitch: true, smartResume: false, gitCheckpoint: false })), backupSessionFile: vi.fn() }))
-vi.mock('../session-transfer.js',() => ({ findLatestSession: vi.fn(() => null), transferSession: vi.fn() }))
-vi.mock('../github-sync.js',     () => ({ pushProject: vi.fn() }))
-vi.mock('../isolation.js',       () => ({ getIsolationEnv: vi.fn(() => ({})), prepareIsolation: vi.fn(() => () => {}), getIsolationMethod: vi.fn(() => 'env') }))
-vi.mock('../plugins.js',         () => ({ loadPlugins: vi.fn(async () => []), firePluginEvent: vi.fn(async () => {}) }))
-vi.mock('../hooks.js',           () => ({ ensureHooksRegistered: vi.fn() }))
-vi.mock('../context-injector.js',() => ({ buildContextMessage: vi.fn(() => null) }))
-vi.mock('../resume-verify.js',   () => ({ detectResumeOutcome: vi.fn(() => 'unknown'), extractSessionSummary: vi.fn(() => null) }))
+vi.mock('../sessions.js', () => ({
+  startSession: vi.fn(() => 'sess-1'),
+  endSession: vi.fn(),
+  cleanupOrphanedSessions: vi.fn(),
+}))
+vi.mock('../accounts.js', () => ({
+  getApiKey: vi.fn(() => 'sk-ant-key'),
+  setActiveAccount: vi.fn(),
+  listAccounts: vi.fn(() => []),
+}))
+vi.mock('../checkpoint.js', () => ({
+  loadSyncConfig: vi.fn(() => ({ autoSwitch: true, smartResume: false, gitCheckpoint: false })),
+  backupSessionFile: vi.fn(),
+}))
+vi.mock('../session-transfer.js', () => ({
+  findLatestSession: vi.fn(() => null),
+  transferSession: vi.fn(),
+}))
+vi.mock('../github-sync.js', () => ({ pushProject: vi.fn() }))
+vi.mock('../isolation.js', () => ({
+  getIsolationEnv: vi.fn(() => ({})),
+  prepareIsolation: vi.fn(() => () => {}),
+  getIsolationMethod: vi.fn(() => 'env'),
+}))
+vi.mock('../plugins.js', () => ({
+  loadPlugins: vi.fn(async () => []),
+  firePluginEvent: vi.fn(async () => {}),
+}))
+vi.mock('../hooks.js', () => ({ ensureHooksRegistered: vi.fn() }))
+vi.mock('../context-injector.js', () => ({ buildContextMessage: vi.fn(() => null) }))
+vi.mock('../resume-verify.js', () => ({
+  detectResumeOutcome: vi.fn(() => 'unknown'),
+  extractSessionSummary: vi.fn(() => null),
+}))
 
 import { runClaude } from '../runner.js'
-import { spawn }     from 'child_process'
+import { spawn } from 'child_process'
 import { EventEmitter } from 'events'
 
 vi.mock('child_process', () => ({ spawn: vi.fn() }))
@@ -22,7 +46,7 @@ function mockChild(exitCode, stderrLines = []) {
   const child = new EventEmitter()
   child.stdout = new EventEmitter()
   child.stderr = new EventEmitter()
-  child.stdin  = { write: vi.fn(), end: vi.fn() }
+  child.stdin = { write: vi.fn(), end: vi.fn() }
 
   setTimeout(() => {
     for (const line of stderrLines) child.stderr.emit('data', Buffer.from(line))
@@ -70,7 +94,7 @@ describe('runClaude', () => {
   it('detects credit limit error and attempts switch', async () => {
     const { listAccounts } = await import('../accounts.js')
     listAccounts.mockReturnValueOnce([
-      { name: 'work',    type: 'api_key', provider: 'anthropic', disabled: false, priority: 0 },
+      { name: 'work', type: 'api_key', provider: 'anthropic', disabled: false, priority: 0 },
       { name: 'backup', type: 'api_key', provider: 'anthropic', disabled: false, priority: 1 },
     ])
 
@@ -82,7 +106,7 @@ describe('runClaude', () => {
     })
 
     const onSwitch = vi.fn()
-    const result   = await runClaude(account, [], { autoSwitch: true, onSwitch })
+    const result = await runClaude(account, [], { autoSwitch: true, onSwitch })
 
     expect(onSwitch).toHaveBeenCalledWith('work', 'backup')
     expect(result.code).toBe(0)

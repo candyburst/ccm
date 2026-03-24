@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { CREDIT_PATTERNS } from '../config.js'
 
-const isCreditError = (text) => CREDIT_PATTERNS.some(p => p.test(text))
+const isCreditError = text => CREDIT_PATTERNS.some(p => p.test(text))
 
 describe('CREDIT_PATTERNS', () => {
   // These MUST match — real Claude Code stderr samples
@@ -12,8 +12,8 @@ describe('CREDIT_PATTERNS', () => {
     'usage limit exceeded for this billing period',
     'quota exceeded',
     'Quota exceeded for your current plan',
-    'QUOTA EXCEEDED',  // case-insensitive
-    'Credit Balance Is Too Low',  // mixed case
+    'QUOTA EXCEEDED', // case-insensitive
+    'Credit Balance Is Too Low', // mixed case
   ]
 
   // These must NOT match — normal Claude Code output

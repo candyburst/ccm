@@ -7,8 +7,8 @@
 import { getSessions } from './sessions.js'
 import { EXIT_REASONS } from './config.js'
 
-const MAX_SESSIONS      = 5
-const WARN_THRESHOLDS   = [1800, 600]  // 30 min, 10 min in seconds
+const MAX_SESSIONS = 5
+const WARN_THRESHOLDS = [1800, 600] // 30 min, 10 min in seconds
 
 /**
  * Compute weighted average tokens per second for an account.
@@ -25,16 +25,16 @@ export function accountBurnRate(accountName) {
   if (sessions.length === 0) return null
 
   // Weighted average: most recent session has weight MAX_SESSIONS, oldest has weight 1
-  let weightedSum  = 0
-  let totalWeight  = 0
+  let weightedSum = 0
+  let totalWeight = 0
 
   sessions.forEach((s, i) => {
     const totalTokens = (s.tokens.input || 0) + (s.tokens.output || 0)
     if (totalTokens === 0 || s.durationSec === 0) return
-    const tps    = totalTokens / s.durationSec
-    const weight = sessions.length - i  // most recent = highest weight
-    weightedSum  += tps * weight
-    totalWeight  += weight
+    const tps = totalTokens / s.durationSec
+    const weight = sessions.length - i // most recent = highest weight
+    weightedSum += tps * weight
+    totalWeight += weight
   })
 
   if (totalWeight === 0) return null
@@ -79,8 +79,8 @@ export function formatTimeRemaining(seconds) {
 export function burnRateAlertLevel(secondsRemaining, thresholds = WARN_THRESHOLDS) {
   if (secondsRemaining === null) return null
   const [warnSec, critSec] = thresholds
-  if (secondsRemaining <= critSec)  return 'critical'
-  if (secondsRemaining <= warnSec)  return 'warning'
+  if (secondsRemaining <= critSec) return 'critical'
+  if (secondsRemaining <= warnSec) return 'warning'
   return null
 }
 
@@ -98,12 +98,12 @@ export function getAllBurnRates(accounts, cfg = {}) {
     // remainingTokens not yet tracked per-account — returns null until usage tracking is implemented
     const secondsRemaining = null
     return {
-      name:           account.name,
-      tps:            tps ? Math.round(tps) : null,
+      name: account.name,
+      tps: tps ? Math.round(tps) : null,
       secondsRemaining,
-      label:          secondsRemaining !== null ? formatTimeRemaining(secondsRemaining) : null,
-      alertLevel:     burnRateAlertLevel(secondsRemaining, thresholds),
-      hasData:        tps !== null,
+      label: secondsRemaining !== null ? formatTimeRemaining(secondsRemaining) : null,
+      alertLevel: burnRateAlertLevel(secondsRemaining, thresholds),
+      hasData: tps !== null,
     }
   })
 }

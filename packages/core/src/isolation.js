@@ -13,7 +13,7 @@ import { debug } from './debug.js'
 const IS_WINDOWS = process.platform === 'win32'
 
 const ISOLATION_METHODS = {
-  ENV:     'CLAUDE_CONFIG_DIR',
+  ENV: 'CLAUDE_CONFIG_DIR',
   SYMLINK: 'symlink',
 }
 
@@ -31,7 +31,7 @@ function detectIsolationMethod(testSessionDir) {
   mkdirSync(testSessionDir, { recursive: true })
 
   const result = spawnSync('claude', ['--version'], {
-    env:     { ...process.env, CLAUDE_CONFIG_DIR: testSessionDir },
+    env: { ...process.env, CLAUDE_CONFIG_DIR: testSessionDir },
     timeout: 8000,
     encoding: 'utf8',
   })
@@ -49,21 +49,27 @@ function detectIsolationMethod(testSessionDir) {
       debug(`isolation detection: CLAUDE_CONFIG_DIR honoured (${files.length} files written)`)
       return ISOLATION_METHODS.ENV
     }
-  } catch { /* unreadable — treat as not honoured */ }
+  } catch {
+    /* unreadable — treat as not honoured */
+  }
 
   debug('isolation detection: CLAUDE_CONFIG_DIR not honoured — using symlink fallback')
   return ISOLATION_METHODS.SYMLINK
 }
 
 function cleanupTestDir(dir) {
-  try { rmSync(dir, { recursive: true, force: true }) } catch { /* best-effort */ }
+  try {
+    rmSync(dir, { recursive: true, force: true })
+  } catch {
+    /* best-effort */
+  }
 }
 
 export function getIsolationMethod() {
   if (_detectedMethod) return _detectedMethod
   const testDir = join(CCM_DIR, '.isolation-test')
   _detectedMethod = detectIsolationMethod(testDir)
-  cleanupTestDir(testDir)  // remove temp dir after detection
+  cleanupTestDir(testDir) // remove temp dir after detection
   return _detectedMethod
 }
 
@@ -74,7 +80,7 @@ export function isEnvIsolation() {
 // ── Symlink management (macOS / Linux only) ────────────────────────────────────
 
 export function activateSymlink(sessionDir) {
-  if (IS_WINDOWS) return  // guard — should never be called on Windows
+  if (IS_WINDOWS) return // guard — should never be called on Windows
 
   if (!existsSync(sessionDir)) mkdirSync(sessionDir, { recursive: true })
 
@@ -84,11 +90,19 @@ export function activateSymlink(sessionDir) {
       renameSync(CLAUDE_HOME, backup)
       debug(`symlink: backed up ${CLAUDE_HOME} → ${backup}`)
     } else {
-      try { unlinkSync(CLAUDE_HOME) } catch { /* may already be gone */ }
+      try {
+        unlinkSync(CLAUDE_HOME)
+      } catch {
+        /* may already be gone */
+      }
     }
   }
 
-  try { unlinkSync(CLAUDE_HOME) } catch { /* not there — fine */ }
+  try {
+    unlinkSync(CLAUDE_HOME)
+  } catch {
+    /* not there — fine */
+  }
   symlinkSync(sessionDir, CLAUDE_HOME, 'dir')
   debug(`symlink: ${CLAUDE_HOME} → ${sessionDir}`)
 }
@@ -97,7 +111,11 @@ export function deactivateSymlink() {
   if (IS_WINDOWS) return
 
   const backup = `${CLAUDE_HOME}-ccm-backup`
-  try { unlinkSync(CLAUDE_HOME) } catch { /* may already be gone */ }
+  try {
+    unlinkSync(CLAUDE_HOME)
+  } catch {
+    /* may already be gone */
+  }
   if (existsSync(backup)) {
     renameSync(backup, CLAUDE_HOME)
     debug('symlink: restored original ~/.claude')

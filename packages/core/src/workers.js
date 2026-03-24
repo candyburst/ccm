@@ -9,14 +9,17 @@ import { listAccounts, getActiveAccount } from './accounts.js'
 import { runClaude } from './runner.js'
 import { debug } from './debug.js'
 
-const WORKERS_FILE  = join(CCM_DIR, 'workers.json')
-const LOCK_DIR      = join(CCM_DIR, 'account-locks')
+const WORKERS_FILE = join(CCM_DIR, 'workers.json')
+const LOCK_DIR = join(CCM_DIR, 'account-locks')
 
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 function loadWorkers() {
-  try { return JSON.parse(readFileSync(WORKERS_FILE, 'utf8')) }
-  catch { return {} }
+  try {
+    return JSON.parse(readFileSync(WORKERS_FILE, 'utf8'))
+  } catch {
+    return {}
+  }
 }
 
 function saveWorkers(workers) {
@@ -36,9 +39,16 @@ function acquireLock(accountName) {
     // Check if the lock is stale (PID no longer running)
     try {
       const { pid } = JSON.parse(readFileSync(lockFile, 'utf8'))
-      try { process.kill(pid, 0) } catch { /* PID gone — stale lock */ writeFileSync(lockFile, JSON.stringify({ pid: process.pid })); return true }
-      return false  // lock is held by active process
-    } catch { /* corrupt lock — overwrite */ }
+      try {
+        process.kill(pid, 0)
+      } catch {
+        /* PID gone — stale lock */ writeFileSync(lockFile, JSON.stringify({ pid: process.pid }))
+        return true
+      }
+      return false // lock is held by active process
+    } catch {
+      /* corrupt lock — overwrite */
+    }
   }
   writeFileSync(lockFile, JSON.stringify({ pid: process.pid, lockedAt: new Date().toISOString() }))
   return true
@@ -46,7 +56,11 @@ function acquireLock(accountName) {
 
 function releaseLock(accountName) {
   const lockFile = join(LOCK_DIR, `${accountName}.lock`)
-  try { unlinkSync(lockFile) } catch { /* already released */ }
+  try {
+    unlinkSync(lockFile)
+  } catch {
+    /* already released */
+  }
 }
 
 // ── Worker API ────────────────────────────────────────────────────────────────
@@ -62,9 +76,13 @@ export function getWorker(name) {
 
 export function stopWorker(name) {
   const workers = loadWorkers()
-  const worker  = workers[name]
+  const worker = workers[name]
   if (!worker) return false
-  try { process.kill(worker.pid, 'SIGTERM') } catch { /* already stopped */ }
+  try {
+    process.kill(worker.pid, 'SIGTERM')
+  } catch {
+    /* already stopped */
+  }
   releaseLock(worker.account)
   delete workers[name]
   saveWorkers(workers)
@@ -74,7 +92,11 @@ export function stopWorker(name) {
 export function stopAllWorkers() {
   const workers = loadWorkers()
   for (const [name, w] of Object.entries(workers)) {
-    try { process.kill(w.pid, 'SIGTERM') } catch { /* already stopped */ }
+    try {
+      process.kill(w.pid, 'SIGTERM')
+    } catch {
+      /* already stopped */
+    }
     releaseLock(w.account)
   }
   saveWorkers({})
@@ -89,7 +111,7 @@ export function stopAllWorkers() {
  * @param {object} opts         - Same as runClaude opts
  */
 export async function startWorker(workerName, args = [], opts = {}) {
-  const workers  = loadWorkers()
+  const workers = loadWorkers()
   if (workers[workerName]) throw new Error(`Worker "${workerName}" is already running`)
 
   // Find a free account
@@ -101,15 +123,18 @@ export async function startWorker(workerName, args = [], opts = {}) {
       break
     }
   }
-  if (!account) throw new Error('No free accounts available for worker — all accounts are locked by other workers')
+  if (!account)
+    throw new Error(
+      'No free accounts available for worker — all accounts are locked by other workers'
+    )
 
   // Register worker
   workers[workerName] = {
-    pid:        process.pid,
-    account:    account.name,
+    pid: process.pid,
+    account: account.name,
     projectRoot: opts.projectRoot || null,
-    startedAt:  new Date().toISOString(),
-    status:     'running',
+    startedAt: new Date().toISOString(),
+    status: 'running',
   }
   saveWorkers(workers)
   debug(`worker "${workerName}": starting on ${account.name}`)
@@ -123,8 +148,8 @@ export async function startWorker(workerName, args = [], opts = {}) {
     // Update worker status on completion
     const updated = loadWorkers()
     if (updated[workerName]) {
-      updated[workerName].status     = 'done'
-      updated[workerName].exitCode   = result.code
+      updated[workerName].status = 'done'
+      updated[workerName].exitCode = result.code
       updated[workerName].completedAt = new Date().toISOString()
       saveWorkers(updated)
     }

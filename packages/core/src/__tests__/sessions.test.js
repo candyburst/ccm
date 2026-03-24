@@ -1,15 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { startSession, endSession, getSessions, getSessionStats, cleanupOrphanedSessions } from '../sessions.js'
+import {
+  startSession,
+  endSession,
+  getSessions,
+  getSessionStats,
+  cleanupOrphanedSessions,
+} from '../sessions.js'
 
 // Mock filesystem
-vi.mock('fs', async (importOriginal) => {
+vi.mock('fs', async importOriginal => {
   const actual = await importOriginal()
-  const store  = { data: '[]' }
+  const store = { data: '[]' }
   return {
     ...actual,
-    existsSync: vi.fn((p) => p.includes('session-log') ? store.data !== '[]' : actual.existsSync(p)),
-    readFileSync: vi.fn((p, enc) => p.includes('session-log') ? store.data : actual.readFileSync(p, enc)),
-    writeFileSync: vi.fn((p, d) => { if (p.includes('session-log')) store.data = d }),
+    existsSync: vi.fn(p =>
+      p.includes('session-log') ? store.data !== '[]' : actual.existsSync(p)
+    ),
+    readFileSync: vi.fn((p, enc) =>
+      p.includes('session-log') ? store.data : actual.readFileSync(p, enc)
+    ),
+    writeFileSync: vi.fn((p, d) => {
+      if (p.includes('session-log')) store.data = d
+    }),
     renameSync: vi.fn(),
     mkdirSync: vi.fn(),
     _store: store,

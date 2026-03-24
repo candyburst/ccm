@@ -19,7 +19,9 @@ function notify(title, body, cfg) {
     if (!SUPPORTED) return
     if (cfg?.showNotifications === false) return
     new Notification({ title, body, silent: false }).show()
-  } catch { /* never propagate notification errors */ }
+  } catch {
+    /* never propagate notification errors */
+  }
 }
 
 function notifySessionEnd(accountName, durationSec, cfg) {

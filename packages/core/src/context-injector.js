@@ -7,7 +7,7 @@ import { join } from 'path'
 import { spawnSync } from 'child_process'
 
 const DEFAULT_MAX_TOKENS = 8000
-const CHARS_PER_TOKEN    = 4  // rough approximation
+const CHARS_PER_TOKEN = 4 // rough approximation
 
 /**
  * Build the context string to prepend to a session.
@@ -21,8 +21,8 @@ const CHARS_PER_TOKEN    = 4  // rough approximation
 export function buildContext(projectRoot, sources, opts = {}) {
   if (!sources || sources.length === 0) return null
 
-  const maxChars  = (opts.maxTokens || DEFAULT_MAX_TOKENS) * CHARS_PER_TOKEN
-  const sections  = []
+  const maxChars = (opts.maxTokens || DEFAULT_MAX_TOKENS) * CHARS_PER_TOKEN
+  const sections = []
 
   for (const src of sources) {
     const section = readSource(projectRoot, src)
@@ -59,7 +59,9 @@ function readSource(projectRoot, src) {
     try {
       const content = readFileSync(filePath, 'utf8')
       return `--- ${spec.source} ---\n${content.trim()}`
-    } catch { return null }
+    } catch {
+      return null
+    }
   }
 
   // Git sources

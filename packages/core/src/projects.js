@@ -23,12 +23,15 @@ export function loadProject(startDir = process.cwd()) {
   try {
     const data = JSON.parse(readFileSync(file, 'utf8'))
     return { ...data, projectFile: file, projectRoot: resolve(file, '..') }
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 export function initProject(dir, accountName, name = '') {
   const file = join(dir, PROJECT_FILE)
-  if (existsSync(file)) throw new Error(`Project already initialised. Edit ${PROJECT_FILE} to change settings.`)
+  if (existsSync(file))
+    throw new Error(`Project already initialised. Edit ${PROJECT_FILE} to change settings.`)
   const config = {
     name: name || basename(dir), // cross-platform: basename handles both / and \
     account: accountName,
@@ -63,9 +66,13 @@ export function scanProjectsUnder(rootDir) {
           } else if (st.isDirectory() && !['node_modules', '.git'].includes(entry)) {
             walk(full, depth + 1)
           }
-        } catch { /* skip inaccessible entries */ }
+        } catch {
+          /* skip inaccessible entries */
+        }
       }
-    } catch { /* skip inaccessible directories */ }
+    } catch {
+      /* skip inaccessible directories */
+    }
   }
   walk(rootDir, 0)
   return results
@@ -73,10 +80,10 @@ export function scanProjectsUnder(rootDir) {
 
 // Scan all configured roots (or homedir if none configured)
 export function scanAllProjects() {
-  const cfg   = loadSyncConfig()
+  const cfg = loadSyncConfig()
   const roots = cfg.projectScanRoots?.length ? cfg.projectScanRoots : [homedir()]
-  const seen  = new Set()
-  const all   = []
+  const seen = new Set()
+  const all = []
   for (const root of roots) {
     for (const p of scanProjectsUnder(root)) {
       if (!seen.has(p.projectFile)) {

@@ -48,35 +48,49 @@ export function extractSessionSummary(jsonlPath, keepLast = 10) {
   if (!existsSync(jsonlPath)) return null
 
   try {
-    const lines = readFileSync(jsonlPath, 'utf8')
-      .split('\n')
-      .filter(Boolean)
+    const lines = readFileSync(jsonlPath, 'utf8').split('\n').filter(Boolean)
 
     const messages = lines
-      .map(l => { try { return JSON.parse(l) } catch { return null } })
+      .map(l => {
+        try {
+          return JSON.parse(l)
+        } catch {
+          return null
+        }
+      })
       .filter(Boolean)
-      .filter(m => m.type === 'human' || m.type === 'assistant' ||
-                   m.role === 'human' || m.role === 'assistant')
+      .filter(
+        m =>
+          m.type === 'human' ||
+          m.type === 'assistant' ||
+          m.role === 'human' ||
+          m.role === 'assistant'
+      )
 
     if (messages.length === 0) return null
 
-    const total   = messages.length
-    const recent  = messages.slice(-keepLast)
+    const total = messages.length
+    const recent = messages.slice(-keepLast)
     const omitted = total - recent.length
 
     const lines2 = recent.map(m => {
-      const role    = (m.type || m.role) === 'human' ? 'User' : 'Assistant'
-      const content = typeof m.content === 'string'
-        ? m.content
-        : Array.isArray(m.content)
-          ? m.content.map(c => c.text || c.input || '').filter(Boolean).join(' ')
-          : JSON.stringify(m.content)
+      const role = (m.type || m.role) === 'human' ? 'User' : 'Assistant'
+      const content =
+        typeof m.content === 'string'
+          ? m.content
+          : Array.isArray(m.content)
+            ? m.content
+                .map(c => c.text || c.input || '')
+                .filter(Boolean)
+                .join(' ')
+            : JSON.stringify(m.content)
       return `${role}: ${content.slice(0, 400)}${content.length > 400 ? '...' : ''}`
     })
 
-    const header = omitted > 0
-      ? `[Context: ${omitted} earlier messages omitted. Showing last ${recent.length} of ${total} total.]\n\n`
-      : `[Context: ${total} messages from previous session.]\n\n`
+    const header =
+      omitted > 0
+        ? `[Context: ${omitted} earlier messages omitted. Showing last ${recent.length} of ${total} total.]\n\n`
+        : `[Context: ${total} messages from previous session.]\n\n`
 
     return header + lines2.join('\n\n')
   } catch (e) {

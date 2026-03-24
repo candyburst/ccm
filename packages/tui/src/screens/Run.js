@@ -12,33 +12,46 @@ import React, { useState, useEffect } from 'react'
 import { Box, Text, useInput, useApp } from 'ink'
 import SelectInput from 'ink-select-input'
 import TextInput from 'ink-text-input'
-import { listAccounts, getActiveAccount, runClaude, loadProject, loadSyncConfig, AUTH } from '@ccm/core'
+import {
+  listAccounts,
+  getActiveAccount,
+  runClaude,
+  loadProject,
+  loadSyncConfig,
+  AUTH,
+} from '@ccm/core'
 
 const MODES = { PICK: 'pick', FLAGS: 'flags', RUNNING: 'running', DONE: 'done', ERROR: 'error' }
 
 export default function Run({ back }) {
   const { exit } = useApp()
-  const [mode,     setMode]     = useState(MODES.PICK)
+  const [mode, setMode] = useState(MODES.PICK)
   const [accounts, setAccounts] = useState([])
   const [selected, setSelected] = useState(null)
-  const [flags,    setFlags]    = useState('')
-  const [result,   setResult]   = useState(null)
-  const [errMsg,   setErrMsg]   = useState('')
+  const [flags, setFlags] = useState('')
+  const [result, setResult] = useState(null)
+  const [errMsg, setErrMsg] = useState('')
 
   useEffect(() => {
-    const list    = listAccounts().filter(a => !a.disabled)
-    const active  = getActiveAccount()
+    const list = listAccounts().filter(a => !a.disabled)
+    const active = getActiveAccount()
     const project = loadProject()
     setAccounts(list)
 
     // Pre-select: project-bound account > active account > first
     if (project) {
       const bound = list.find(a => a.name === project.account)
-      if (bound) { setSelected(bound); return }
+      if (bound) {
+        setSelected(bound)
+        return
+      }
     }
     if (active) {
       const a = list.find(a => a.name === active.name)
-      if (a) { setSelected(a); return }
+      if (a) {
+        setSelected(a)
+        return
+      }
     }
     if (list.length > 0) setSelected(list[0])
   }, [])
@@ -46,8 +59,14 @@ export default function Run({ back }) {
   useInput((inp, key) => {
     if (mode === MODES.RUNNING) return
     if (key.escape) {
-      if (mode === MODES.FLAGS) { setMode(MODES.PICK); return }
-      if (mode === MODES.DONE || mode === MODES.ERROR) { back(); return }
+      if (mode === MODES.FLAGS) {
+        setMode(MODES.PICK)
+        return
+      }
+      if (mode === MODES.DONE || mode === MODES.ERROR) {
+        back()
+        return
+      }
       back()
     }
   })
@@ -57,14 +76,12 @@ export default function Run({ back }) {
     setMode(MODES.RUNNING)
 
     const project = loadProject()
-    const cfg     = loadSyncConfig()
-    const extraArgs = flags.trim()
-      ? flags.trim().split(/\s+/)
-      : []
+    const cfg = loadSyncConfig()
+    const extraArgs = flags.trim() ? flags.trim().split(/\s+/) : []
 
     try {
       const res = await runClaude(selected, extraArgs, {
-        autoSwitch:  true,
+        autoSwitch: true,
         projectName: project?.name,
         projectRoot: project?.projectRoot,
         onSwitch: (from, to) => {
@@ -82,19 +99,22 @@ export default function Run({ back }) {
 
   // ── No accounts ──────────────────────────────────────────────────────────────
 
-  if (accounts.length === 0) return (
-    <Box flexDirection="column" gap={1}>
-      <Text color="yellow">No accounts configured.</Text>
-      <Text dimColor>Press <Text bold>a</Text> on the Dashboard to add one.</Text>
-      <Text dimColor>Esc: back</Text>
-    </Box>
-  )
+  if (accounts.length === 0)
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color="yellow">No accounts configured.</Text>
+        <Text dimColor>
+          Press <Text bold>a</Text> on the Dashboard to add one.
+        </Text>
+        <Text dimColor>Esc: back</Text>
+      </Box>
+    )
 
   // ── Account picker ───────────────────────────────────────────────────────────
 
   if (mode === MODES.PICK) {
     const project = loadProject()
-    const items   = accounts.map(a => ({
+    const items = accounts.map(a => ({
       label: `${a.name}  ${a.type === AUTH.API_KEY ? '[api]' : '[email]'}${a.active ? '  ← active' : ''}`,
       value: a.name,
     }))
@@ -103,70 +123,78 @@ export default function Run({ back }) {
       <Box flexDirection="column" gap={1}>
         <Text bold>Run session — choose account</Text>
         {project && (
-          <Text dimColor>Project: <Text color="green">{project.name}</Text></Text>
+          <Text dimColor>
+            Project: <Text color="green">{project.name}</Text>
+          </Text>
         )}
         <SelectInput
           items={items}
-          initialIndex={Math.max(0, accounts.findIndex(a => a.name === selected?.name))}
+          initialIndex={Math.max(
+            0,
+            accounts.findIndex(a => a.name === selected?.name)
+          )}
           onSelect={item => {
             setSelected(accounts.find(a => a.name === item.value))
             setMode(MODES.FLAGS)
           }}
         />
-        <Text dimColor>↑↓ select  •  Enter: confirm  •  Esc: back</Text>
+        <Text dimColor>↑↓ select • Enter: confirm • Esc: back</Text>
       </Box>
     )
   }
 
   // ── Flags input ──────────────────────────────────────────────────────────────
 
-  if (mode === MODES.FLAGS) return (
-    <Box flexDirection="column" gap={1}>
-      <Text bold>Run session</Text>
-      <Box gap={2}>
-        <Text color="cyan">Account:</Text>
-        <Text bold>{selected?.name}</Text>
-        <Text dimColor>({selected?.type === AUTH.API_KEY ? 'api key' : selected?.email})</Text>
-      </Box>
+  if (mode === MODES.FLAGS)
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text bold>Run session</Text>
+        <Box gap={2}>
+          <Text color="cyan">Account:</Text>
+          <Text bold>{selected?.name}</Text>
+          <Text dimColor>({selected?.type === AUTH.API_KEY ? 'api key' : selected?.email})</Text>
+        </Box>
 
-      <Box gap={1} marginTop={1}>
-        <Text color="cyan">Extra flags (optional):</Text>
-        <TextInput
-          value={flags}
-          onChange={setFlags}
-          onSubmit={launch}
-          placeholder="e.g. --model claude-opus-4-5 --dangerously-skip-permissions"
-        />
-      </Box>
+        <Box gap={1} marginTop={1}>
+          <Text color="cyan">Extra flags (optional):</Text>
+          <TextInput
+            value={flags}
+            onChange={setFlags}
+            onSubmit={launch}
+            placeholder="e.g. --model claude-opus-4-5 --dangerously-skip-permissions"
+          />
+        </Box>
 
-      <Text dimColor>Enter: start  •  Esc: back to account picker</Text>
-    </Box>
-  )
+        <Text dimColor>Enter: start • Esc: back to account picker</Text>
+      </Box>
+    )
 
   // ── Running ──────────────────────────────────────────────────────────────────
 
-  if (mode === MODES.RUNNING) return (
-    <Box flexDirection="column" gap={1}>
-      <Text color="yellow">⠋ Session running on "{selected?.name}"...</Text>
-      <Text dimColor>Claude Code has taken over the terminal.</Text>
-      <Text dimColor>CCM will resume here when the session ends.</Text>
-    </Box>
-  )
+  if (mode === MODES.RUNNING)
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color="yellow">⠋ Session running on "{selected?.name}"...</Text>
+        <Text dimColor>Claude Code has taken over the terminal.</Text>
+        <Text dimColor>CCM will resume here when the session ends.</Text>
+      </Box>
+    )
 
   // ── Done ─────────────────────────────────────────────────────────────────────
 
-  if (mode === MODES.DONE) return (
-    <Box flexDirection="column" gap={1}>
-      <Text color="green" bold>✓ Session ended</Text>
-      {result?.exhausted && (
-        <Text color="red">All accounts exhausted — no more accounts to try.</Text>
-      )}
-      {result && !result.exhausted && (
-        <Text dimColor>Exit code: {result.code ?? '—'}</Text>
-      )}
-      <Text dimColor>Esc: back to dashboard</Text>
-    </Box>
-  )
+  if (mode === MODES.DONE)
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color="green" bold>
+          ✓ Session ended
+        </Text>
+        {result?.exhausted && (
+          <Text color="red">All accounts exhausted — no more accounts to try.</Text>
+        )}
+        {result && !result.exhausted && <Text dimColor>Exit code: {result.code ?? '—'}</Text>}
+        <Text dimColor>Esc: back to dashboard</Text>
+      </Box>
+    )
 
   // ── Error ─────────────────────────────────────────────────────────────────────
 

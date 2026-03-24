@@ -160,15 +160,18 @@ connect()
 
 function getSnapshot() {
   const accounts = listAccounts().map(a => ({
-    name: a.name, type: a.type, active: a.active,
-    disabled: a.disabled, notes: a.notes,
+    name: a.name,
+    type: a.type,
+    active: a.active,
+    disabled: a.disabled,
+    notes: a.notes,
     email: a.type === 'email' ? a.email : undefined,
   }))
   return {
     accounts,
     sessions: getSessions({ limit: 50 }),
-    stats:    getSessionStats(),
-    ts:       Date.now(),
+    stats: getSessionStats(),
+    ts: Date.now(),
   }
 }
 
@@ -182,8 +185,8 @@ function getSnapshot() {
  * @returns {object} { port, token, close }
  */
 export function startServer({ port = DEFAULT_PORT, open: shouldOpen = false } = {}) {
-  const token   = randomBytes(16).toString('hex')
-  const clients = new Set()  // active SSE connections
+  const token = randomBytes(16).toString('hex')
+  const clients = new Set() // active SSE connections
 
   const server = createServer((req, res) => {
     const url = new URL(req.url, `http://localhost:${port}`)
@@ -216,9 +219,9 @@ export function startServer({ port = DEFAULT_PORT, open: shouldOpen = false } = 
 
     if (url.pathname === '/stream') {
       res.writeHead(200, {
-        'Content-Type':  'text/event-stream',
+        'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection':    'keep-alive',
+        Connection: 'keep-alive',
       })
 
       // Send initial snapshot immediately
@@ -238,8 +241,11 @@ export function startServer({ port = DEFAULT_PORT, open: shouldOpen = false } = 
     if (clients.size === 0) return
     const payload = `data: ${JSON.stringify(getSnapshot())}\n\n`
     for (const client of clients) {
-      try { client.write(payload) }
-      catch { clients.delete(client) }
+      try {
+        client.write(payload)
+      } catch {
+        clients.delete(client)
+      }
     }
   }, 5000)
 
@@ -250,17 +256,24 @@ export function startServer({ port = DEFAULT_PORT, open: shouldOpen = false } = 
       // Use spawnSync with explicit args — no shell, no injection risk
       try {
         const [bin, ...args] =
-          process.platform === 'win32'  ? ['cmd', '/c', 'start', '', url] :
-          process.platform === 'darwin' ? ['open', url] :
-                                          ['xdg-open', url]
+          process.platform === 'win32'
+            ? ['cmd', '/c', 'start', '', url]
+            : process.platform === 'darwin'
+              ? ['open', url]
+              : ['xdg-open', url]
         _openSpawn(bin, args, { detached: true, stdio: 'ignore' })
-      } catch { /* browser open is best-effort */ }
+      } catch {
+        /* browser open is best-effort */
+      }
     }
   })
 
   return {
     port,
     token,
-    close: () => { clearInterval(interval); server.close() },
+    close: () => {
+      clearInterval(interval)
+      server.close()
+    },
   }
 }

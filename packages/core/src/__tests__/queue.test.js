@@ -2,16 +2,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { addTask, listTasks, clearQueue, removeTask } from '../queue.js'
 
 // Mock filesystem to avoid writing to disk during tests
-vi.mock('fs', async (orig) => {
+vi.mock('fs', async orig => {
   const actual = await orig()
   let store = '[]'
   return {
     ...actual,
-    existsSync:   vi.fn((p) => p.includes('queue') ? store !== '[]' : actual.existsSync(p)),
-    readFileSync: vi.fn((p, enc) => p.includes('queue') ? store : actual.readFileSync(p, enc)),
-    writeFileSync: vi.fn((p, d) => { if (p.includes('queue')) store = d }),
-    mkdirSync:    vi.fn(),
-    _reset:       () => { store = '[]' },
+    existsSync: vi.fn(p => (p.includes('queue') ? store !== '[]' : actual.existsSync(p))),
+    readFileSync: vi.fn((p, enc) => (p.includes('queue') ? store : actual.readFileSync(p, enc))),
+    writeFileSync: vi.fn((p, d) => {
+      if (p.includes('queue')) store = d
+    }),
+    mkdirSync: vi.fn(),
+    _reset: () => {
+      store = '[]'
+    },
   }
 })
 

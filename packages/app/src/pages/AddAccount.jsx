@@ -3,11 +3,11 @@ import React, { useState } from 'react'
 const STEPS = { TYPE: 'type', FORM: 'form', VALIDATING: 'validating', DONE: 'done' }
 
 export default function AddAccount({ onDone }) {
-  const [step,    setStep]    = useState(STEPS.TYPE)
-  const [type,    setType]    = useState('')
-  const [form,    setForm]    = useState({ name: '', key: '', email: '', notes: '' })
-  const [error,   setError]   = useState('')
-  const [busy,    setBusy]    = useState(false)
+  const [step, setStep] = useState(STEPS.TYPE)
+  const [type, setType] = useState('')
+  const [form, setForm] = useState({ name: '', key: '', email: '', notes: '' })
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
 
   function field(label, key, opts = {}) {
     return (
@@ -31,8 +31,10 @@ export default function AddAccount({ onDone }) {
     // Client-side pre-checks before hitting the network
     if (!form.name.trim()) return setError('Account name is required')
     if (type === 'api_key' && !form.key.trim()) return setError('API key is required')
-    if (type === 'api_key' && !form.key.startsWith('sk-')) return setError('API key should start with sk-')
-    if (type === 'email'   && !form.email.includes('@'))   return setError('Enter a valid email address')
+    if (type === 'api_key' && !form.key.startsWith('sk-'))
+      return setError('API key should start with sk-')
+    if (type === 'email' && !form.email.includes('@'))
+      return setError('Enter a valid email address')
 
     setBusy(true)
 
@@ -44,12 +46,16 @@ export default function AddAccount({ onDone }) {
     try {
       if (type === 'api_key') {
         const res = await window.ccm.accounts.addApiKey({
-          name: form.name.trim(), apiKey: form.key.trim(), notes: form.notes,
+          name: form.name.trim(),
+          apiKey: form.key.trim(),
+          notes: form.notes,
         })
         if (!res.ok) throw new Error(res.error)
       } else {
         const res = await window.ccm.accounts.addEmail({
-          name: form.name.trim(), email: form.email.trim(), notes: form.notes,
+          name: form.name.trim(),
+          email: form.email.trim(),
+          notes: form.notes,
         })
         if (!res.ok) throw new Error(res.error)
       }
@@ -72,67 +78,103 @@ export default function AddAccount({ onDone }) {
 
   // ── Type selection ──────────────────────────────────────────────────────────
 
-  if (step === STEPS.TYPE) return (
-    <div style={{ maxWidth: 480 }}>
-      <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Add account</h1>
-      <div style={{ color: 'var(--text2)', marginBottom: 12 }}>Choose authentication method:</div>
-      {[
-        { value: 'api_key', label: 'API key',     desc: 'Paste an Anthropic API key from console.anthropic.com' },
-        { value: 'email',   label: 'Email login', desc: 'Authenticate via browser — works with Claude Max / Pro subscriptions' },
-      ].map(t => (
-        <button
-          key={t.value}
-          className="ghost"
-          style={{ textAlign: 'left', padding: '14px 16px', lineHeight: 1.6, width: '100%', marginBottom: 10 }}
-          onClick={() => { setType(t.value); setStep(STEPS.FORM) }}
-        >
-          <div style={{ fontWeight: 700, color: 'var(--text)' }}>{t.label}</div>
-          <div style={{ color: 'var(--text3)', fontSize: 12 }}>{t.desc}</div>
-        </button>
-      ))}
-    </div>
-  )
+  if (step === STEPS.TYPE)
+    return (
+      <div style={{ maxWidth: 480 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Add account</h1>
+        <div style={{ color: 'var(--text2)', marginBottom: 12 }}>Choose authentication method:</div>
+        {[
+          {
+            value: 'api_key',
+            label: 'API key',
+            desc: 'Paste an Anthropic API key from console.anthropic.com',
+          },
+          {
+            value: 'email',
+            label: 'Email login',
+            desc: 'Authenticate via browser — works with Claude Max / Pro subscriptions',
+          },
+        ].map(t => (
+          <button
+            key={t.value}
+            className="ghost"
+            style={{
+              textAlign: 'left',
+              padding: '14px 16px',
+              lineHeight: 1.6,
+              width: '100%',
+              marginBottom: 10,
+            }}
+            onClick={() => {
+              setType(t.value)
+              setStep(STEPS.FORM)
+            }}
+          >
+            <div style={{ fontWeight: 700, color: 'var(--text)' }}>{t.label}</div>
+            <div style={{ color: 'var(--text3)', fontSize: 12 }}>{t.desc}</div>
+          </button>
+        ))}
+      </div>
+    )
 
   // ── Validating ──────────────────────────────────────────────────────────────
 
-  if (step === STEPS.VALIDATING) return (
-    <div style={{ maxWidth: 480 }}>
-      <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Add account</h1>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, color: 'var(--text2)' }}>
-        <div style={{ color: 'var(--accent)' }}>⠋ Validating API key...</div>
-        <div style={{ fontSize: 12 }}>Checking with Anthropic — this takes a moment</div>
+  if (step === STEPS.VALIDATING)
+    return (
+      <div style={{ maxWidth: 480 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Add account</h1>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, color: 'var(--text2)' }}>
+          <div style={{ color: 'var(--accent)' }}>⠋ Validating API key...</div>
+          <div style={{ fontSize: 12 }}>Checking with Anthropic — this takes a moment</div>
+        </div>
       </div>
-    </div>
-  )
+    )
 
   // ── Form ────────────────────────────────────────────────────────────────────
 
-  if (step === STEPS.FORM) return (
-    <div style={{ maxWidth: 480 }}>
-      <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>
-        Add account — {type === 'api_key' ? 'API key' : 'email login'}
-      </h1>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {field('Account name', 'name', { focus: true, placeholder: 'e.g. personal, work, backup' })}
-        {type === 'api_key' && field('Anthropic API key', 'key', { password: true, placeholder: 'sk-ant-...' })}
-        {type === 'email'   && field('Email address', 'email', { placeholder: 'you@example.com' })}
-        {field('Notes (optional)', 'notes', { placeholder: 'e.g. personal plan, 50k tokens/day' })}
+  if (step === STEPS.FORM)
+    return (
+      <div style={{ maxWidth: 480 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>
+          Add account — {type === 'api_key' ? 'API key' : 'email login'}
+        </h1>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {field('Account name', 'name', {
+            focus: true,
+            placeholder: 'e.g. personal, work, backup',
+          })}
+          {type === 'api_key' &&
+            field('Anthropic API key', 'key', { password: true, placeholder: 'sk-ant-...' })}
+          {type === 'email' && field('Email address', 'email', { placeholder: 'you@example.com' })}
+          {field('Notes (optional)', 'notes', {
+            placeholder: 'e.g. personal plan, 50k tokens/day',
+          })}
 
-        {error && (
-          <div style={{ color: 'var(--red)', fontSize: 12, padding: '8px 12px', background: 'var(--bg3)', borderRadius: 6 }}>
-            ✗ {error}
+          {error && (
+            <div
+              style={{
+                color: 'var(--red)',
+                fontSize: 12,
+                padding: '8px 12px',
+                background: 'var(--bg3)',
+                borderRadius: 6,
+              }}
+            >
+              ✗ {error}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+            <button className="ghost" onClick={() => setStep(STEPS.TYPE)} disabled={busy}>
+              ← back
+            </button>
+            <button className="primary" onClick={submit} disabled={busy}>
+              {busy ? 'validating...' : 'add account'}
+            </button>
           </div>
-        )}
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-          <button className="ghost" onClick={() => setStep(STEPS.TYPE)} disabled={busy}>← back</button>
-          <button className="primary" onClick={submit} disabled={busy}>
-            {busy ? 'validating...' : 'add account'}
-          </button>
         </div>
       </div>
-    </div>
-  )
+    )
 
   // ── Done ────────────────────────────────────────────────────────────────────
 
@@ -145,15 +187,25 @@ export default function AddAccount({ onDone }) {
         </div>
 
         {type === 'email' && (
-          <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px' }}>
+          <div
+            style={{
+              background: 'var(--bg3)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '14px 16px',
+            }}
+          >
             <div style={{ color: 'var(--yellow)', marginBottom: 6 }}>Authentication required</div>
             <div style={{ color: 'var(--text2)', fontSize: 12, marginBottom: 12 }}>
-              Log in via browser so Claude Code can store a session token for <strong>{form.email}</strong>.
+              Log in via browser so Claude Code can store a session token for{' '}
+              <strong>{form.email}</strong>.
             </div>
             <button className="primary" disabled={busy} onClick={handleLogin}>
               {busy ? 'opening browser...' : 'open browser to log in'}
             </button>
-            {error && <div style={{ color: 'var(--red)', fontSize: 12, marginTop: 8 }}>✗ {error}</div>}
+            {error && (
+              <div style={{ color: 'var(--red)', fontSize: 12, marginTop: 8 }}>✗ {error}</div>
+            )}
           </div>
         )}
 

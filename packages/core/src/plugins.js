@@ -7,17 +7,20 @@ import { join, basename } from 'path'
 import { CCM_DIR } from './config.js'
 import { debug } from './debug.js'
 
-const PLUGINS_DIR    = join(CCM_DIR, 'plugins')
-const DISABLED_FILE  = join(CCM_DIR, 'plugins-disabled.json')
-const ERROR_LOG      = join(CCM_DIR, 'plugin-errors.log')
+const PLUGINS_DIR = join(CCM_DIR, 'plugins')
+const DISABLED_FILE = join(CCM_DIR, 'plugins-disabled.json')
+const ERROR_LOG = join(CCM_DIR, 'plugin-errors.log')
 
 // ── Plugin registry ───────────────────────────────────────────────────────────
 
-let _loaded = null  // cache: null = not loaded, [] = loaded (possibly empty)
+let _loaded = null // cache: null = not loaded, [] = loaded (possibly empty)
 
 function loadDisabledList() {
-  try { return new Set(JSON.parse(readFileSync(DISABLED_FILE, 'utf8'))) }
-  catch { return new Set() }
+  try {
+    return new Set(JSON.parse(readFileSync(DISABLED_FILE, 'utf8')))
+  } catch {
+    return new Set()
+  }
 }
 
 function saveDisabledList(set) {
@@ -38,8 +41,7 @@ export async function loadPlugins() {
   }
 
   const disabled = loadDisabledList()
-  const files    = readdirSync(PLUGINS_DIR)
-    .filter(f => f.endsWith('.js') && !disabled.has(f))
+  const files = readdirSync(PLUGINS_DIR).filter(f => f.endsWith('.js') && !disabled.has(f))
 
   const plugins = []
   for (const file of files) {
@@ -63,18 +65,20 @@ export async function loadPlugins() {
  * @param {object} payload
  */
 export async function firePluginEvent(event, payload) {
-  const plugins = _loaded || await loadPlugins()
+  const plugins = _loaded || (await loadPlugins())
   if (plugins.length === 0) return
 
-  await Promise.all(plugins.map(async ({ name, mod }) => {
-    const fn = mod[event]
-    if (typeof fn !== 'function') return
-    try {
-      await fn(payload)
-    } catch (e) {
-      logPluginError(name, event, e)
-    }
-  }))
+  await Promise.all(
+    plugins.map(async ({ name, mod }) => {
+      const fn = mod[event]
+      if (typeof fn !== 'function') return
+      try {
+        await fn(payload)
+      } catch (e) {
+        logPluginError(name, event, e)
+      }
+    })
+  )
 }
 
 // ── Plugin management ──────────────────────────────────────────────────────────
@@ -92,14 +96,14 @@ export function disablePlugin(name) {
   const disabled = loadDisabledList()
   disabled.add(name)
   saveDisabledList(disabled)
-  _loaded = null  // invalidate cache
+  _loaded = null // invalidate cache
 }
 
 export function enablePlugin(name) {
   const disabled = loadDisabledList()
   disabled.delete(name)
   saveDisabledList(disabled)
-  _loaded = null  // invalidate cache
+  _loaded = null // invalidate cache
 }
 
 // ── Error logging ─────────────────────────────────────────────────────────────
@@ -109,6 +113,8 @@ function logPluginError(name, event, err) {
   try {
     mkdirSync(CCM_DIR, { recursive: true })
     appendFileSync(ERROR_LOG, entry)
-  } catch { /* never throw from error logging */ }
+  } catch {
+    /* never throw from error logging */
+  }
   debug(`plugin error: ${entry.trim()}`)
 }

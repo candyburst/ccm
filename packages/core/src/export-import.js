@@ -9,16 +9,16 @@ import { ACCOUNTS_FILE, SESSION_LOG, CCM_DIR } from './config.js'
 import { loadAccounts, getApiKey } from './accounts.js'
 import { encrypt } from './crypto.js'
 
-const ALGO        = 'aes-256-gcm'
+const ALGO = 'aes-256-gcm'
 const EXPORT_SALT = 'ccm-export-v1'
-const FORMAT_VER  = 1
+const FORMAT_VER = 1
 
 // ── Passphrase crypto (independent of machine key) ────────────────────────────
 
 function encryptWithPassphrase(text, passphrase) {
   const key = scryptSync(passphrase, EXPORT_SALT, 32)
-  const iv  = randomBytes(12)
-  const c   = createCipheriv(ALGO, key, iv)
+  const iv = randomBytes(12)
+  const c = createCipheriv(ALGO, key, iv)
   const enc = Buffer.concat([c.update(text, 'utf8'), c.final()])
   return [iv.toString('hex'), c.getAuthTag().toString('hex'), enc.toString('hex')].join(':')
 }
@@ -29,7 +29,7 @@ function decryptWithPassphrase(blob, passphrase) {
     if (parts.length !== 3) return null
     const [iv, tag, enc] = parts.map(h => Buffer.from(h, 'hex'))
     const key = scryptSync(passphrase, EXPORT_SALT, 32)
-    const d   = createDecipheriv(ALGO, key, iv)
+    const d = createDecipheriv(ALGO, key, iv)
     d.setAuthTag(tag)
     return d.update(enc) + d.final('utf8')
   } catch {
@@ -51,11 +51,11 @@ export function exportAccounts({ passphrase, plain = false, includeLog = false }
 
   const exported = Object.values(accounts).map(account => {
     const base = {
-      name:      account.name,
-      type:      account.type,
-      notes:     account.notes || '',
-      disabled:  account.disabled || false,
-      priority:  account.priority ?? 0,
+      name: account.name,
+      type: account.type,
+      notes: account.notes || '',
+      disabled: account.disabled || false,
+      priority: account.priority ?? 0,
       createdAt: account.createdAt || new Date().toISOString(),
     }
 
@@ -63,14 +63,14 @@ export function exportAccounts({ passphrase, plain = false, includeLog = false }
       const rawKey = getApiKey(account)
       if (!rawKey) throw new Error(`Cannot read API key for "${account.name}" — wrong machine key?`)
       if (passphrase) {
-        base.encryptedKey  = encryptWithPassphrase(rawKey, passphrase)
+        base.encryptedKey = encryptWithPassphrase(rawKey, passphrase)
         base.keyEncryption = 'passphrase'
       } else {
-        base.plaintextKey  = rawKey
+        base.plaintextKey = rawKey
         base.keyEncryption = 'none'
       }
     } else {
-      base.email      = account.email
+      base.email = account.email
       base.sessionDir = account.sessionDir
     }
 
@@ -78,15 +78,18 @@ export function exportAccounts({ passphrase, plain = false, includeLog = false }
   })
 
   const payload = {
-    version:    FORMAT_VER,
+    version: FORMAT_VER,
     exportedAt: new Date().toISOString(),
-    encrypted:  !!passphrase,
-    accounts:   exported,
+    encrypted: !!passphrase,
+    accounts: exported,
   }
 
   if (includeLog && existsSync(SESSION_LOG)) {
-    try { payload.sessionLog = JSON.parse(readFileSync(SESSION_LOG, 'utf8')) }
-    catch { /* skip */ }
+    try {
+      payload.sessionLog = JSON.parse(readFileSync(SESSION_LOG, 'utf8'))
+    } catch {
+      /* skip */
+    }
   }
 
   return JSON.stringify(payload, null, 2)
@@ -118,8 +121,8 @@ export function importAccounts(jsonStr, passphrase) {
 
   const existing = loadAccounts()
   const imported = []
-  const skipped  = []
-  const errors   = []
+  const skipped = []
+  const errors = []
 
   for (const entry of payload.accounts) {
     if (existing[entry.name]) {
@@ -129,12 +132,12 @@ export function importAccounts(jsonStr, passphrase) {
 
     try {
       const account = {
-        name:      entry.name,
-        type:      entry.type,
-        notes:     entry.notes || '',
-        active:    false,   // never import as active
-        disabled:  entry.disabled || false,
-        priority:  entry.priority ?? Object.keys(existing).length,
+        name: entry.name,
+        type: entry.type,
+        notes: entry.notes || '',
+        active: false, // never import as active
+        disabled: entry.disabled || false,
+        priority: entry.priority ?? Object.keys(existing).length,
         createdAt: entry.createdAt || new Date().toISOString(),
       }
 
@@ -157,9 +160,9 @@ export function importAccounts(jsonStr, passphrase) {
             continue
           }
         }
-        account.encryptedKey = encrypt(rawKey)  // re-encrypt with this machine's key
+        account.encryptedKey = encrypt(rawKey) // re-encrypt with this machine's key
       } else {
-        account.email      = entry.email
+        account.email = entry.email
         account.sessionDir = entry.sessionDir || join(CCM_DIR, 'sessions', entry.name)
       }
 

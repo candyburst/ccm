@@ -11,8 +11,11 @@ import { debug } from './debug.js'
 const TEAM_FILE = join(CCM_DIR, 'team.json')
 
 function loadTeamConfig() {
-  try { return JSON.parse(readFileSync(TEAM_FILE, 'utf8')) }
-  catch { return null }
+  try {
+    return JSON.parse(readFileSync(TEAM_FILE, 'utf8'))
+  } catch {
+    return null
+  }
 }
 
 function saveTeamConfig(cfg) {
@@ -64,7 +67,9 @@ export function getTeamStatus() {
       try {
         const data = JSON.parse(readFileSync(join(locksDir, f), 'utf8'))
         return { account: f.replace('.lock.json', ''), ...data }
-      } catch { return null }
+      } catch {
+        return null
+      }
     })
     .filter(Boolean)
 
@@ -79,14 +84,17 @@ export function lockTeamAccount(accountName, sessionId) {
   mkdirSync(locksDir, { recursive: true })
 
   const lockFile = join(locksDir, `${accountName}.lock.json`)
-  if (existsSync(lockFile)) return false  // already locked
+  if (existsSync(lockFile)) return false // already locked
 
-  writeFileSync(lockFile, JSON.stringify({
-    user:      cfg.user,
-    hostname:  hostname(),
-    sessionId,
-    lockedAt:  new Date().toISOString(),
-  }))
+  writeFileSync(
+    lockFile,
+    JSON.stringify({
+      user: cfg.user,
+      hostname: hostname(),
+      sessionId,
+      lockedAt: new Date().toISOString(),
+    })
+  )
 
   git(['add', join('locks', `${accountName}.lock.json`)], cfg.repoDir)
   git(['commit', '-m', `lock: ${cfg.user} acquired ${accountName}`], cfg.repoDir)

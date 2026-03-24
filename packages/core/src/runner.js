@@ -33,7 +33,7 @@ function buildEnv(account) {
   if (!providerIsSupported(provider)) {
     process.stderr.write(
       `[ccm] Warning: provider "${provider}" is not yet supported by Claude Code. ` +
-      `Proceeding with best-effort env setup.\n`
+        `Proceeding with best-effort env setup.\n`
     )
   }
 
@@ -70,7 +70,7 @@ function parseTokenUsage(text) {
   const m = text.match(TOKEN_PATTERN)
   if (!m) return null
   return {
-    input:  parseInt(m[1].replace(/,/g, ''), 10),
+    input: parseInt(m[1].replace(/,/g, ''), 10),
     output: parseInt(m[2].replace(/,/g, ''), 10),
   }
 }
@@ -92,7 +92,7 @@ function getNextFreshAccount(currentName, exhausted) {
 
 export async function runClaude(account, args = [], opts = {}) {
   const {
-    autoSwitch      = true,
+    autoSwitch = true,
     projectName,
     projectRoot,
     onLog,
@@ -101,7 +101,7 @@ export async function runClaude(account, args = [], opts = {}) {
     onSwitch,
     onCheckpoint,
     resumeSessionId = null,
-    _exhausted      = new Set(),
+    _exhausted = new Set(),
   } = opts
 
   cleanupOrphanedSessions()
@@ -120,7 +120,7 @@ export async function runClaude(account, args = [], opts = {}) {
   let injectMessage = null
   if (!opts.noInject && projectRoot) {
     try {
-            const projFile = join(projectRoot, '.ccm-project.json')
+      const projFile = join(projectRoot, '.ccm-project.json')
       if (existsSync(projFile)) {
         const proj = JSON.parse(readFileSync(projFile, 'utf8'))
         if (proj.autoInject?.length > 0) {
@@ -128,13 +128,17 @@ export async function runClaude(account, args = [], opts = {}) {
           if (injectMessage) debug(`context injection: ${injectMessage.length} chars`)
         }
       }
-    } catch { /* auto-inject is best-effort */ }
+    } catch {
+      /* auto-inject is best-effort */
+    }
   }
 
   // If context injection is configured, print it to stderr before launch
   // (Claude Code doesn't have a --prepend-context flag — this is logged for the user)
   if (injectMessage && !resumeSessionId) {
-    process.stderr.write('\n[ccm] Auto-context injected — copy this before your prompt if needed:\n')
+    process.stderr.write(
+      '\n[ccm] Auto-context injected — copy this before your prompt if needed:\n'
+    )
     process.stderr.write('─'.repeat(60) + '\n')
     process.stderr.write(injectMessage + '\n')
     process.stderr.write('─'.repeat(60) + '\n\n')
@@ -152,7 +156,7 @@ export async function runClaude(account, args = [], opts = {}) {
 
   return new Promise((resolve, reject) => {
     const child = spawn('claude', claudeArgs, {
-      env:   buildEnv(account),
+      env: buildEnv(account),
       // Both stdout and stderr piped so we can:
       // - Forward them to the terminal in real time
       // - Parse token usage from stdout
@@ -163,7 +167,7 @@ export async function runClaude(account, args = [], opts = {}) {
     let stderr = ''
     let stdout = ''
 
-    let resumeVerified  = false
+    let resumeVerified = false
     let resumeCheckDone = false
 
     // Notify caller of PID so it can send SIGTERM if needed
@@ -172,7 +176,7 @@ export async function runClaude(account, args = [], opts = {}) {
     child.stdout.on('data', chunk => {
       const txt = chunk.toString()
       stdout += txt
-      process.stdout.write(txt)   // forward to terminal
+      process.stdout.write(txt) // forward to terminal
       onStdout?.(txt)
       onLog?.(txt)
 
@@ -199,101 +203,140 @@ export async function runClaude(account, args = [], opts = {}) {
     child.stderr.on('data', chunk => {
       const txt = chunk.toString()
       stderr += txt
-      process.stderr.write(txt)   // forward to terminal
+      process.stderr.write(txt) // forward to terminal
       onLog?.(txt)
     })
 
-    child.on('close', (code) => {
+    child.on('close', code => {
       // Wrap all async work in an immediately-invoked async function so
       // errors surface through reject() and don't silently disappear
       ;(async () => {
-      cleanupIsolation()
+        cleanupIsolation()
 
-      // Parse token usage from session output and store in session log
-      const tokens = parseTokenUsage(stdout + stderr)
-      const creditError = isCreditError(stderr, code) && autoSwitch
+        // Parse token usage from session output and store in session log
+        const tokens = parseTokenUsage(stdout + stderr)
+        const creditError = isCreditError(stderr, code) && autoSwitch
 
-      if (creditError) {
-        const next = getNextFreshAccount(account.name, _exhausted)
+        if (creditError) {
+          const next = getNextFreshAccount(account.name, _exhausted)
 
-        if (!next) {
-          endSession(sessionId, { exitCode: code, exitReason: EXIT_REASONS.CREDIT_LIMIT_EXHAUSTED, tokens })
-          process.stderr.write('\n[ccm] All accounts exhausted — no more accounts to try\n')
-          resolve({ code, account, sessionId, exhausted: true })
-          return
-        }
-
-        process.stderr.write(`\n[ccm] Credit limit on "${account.name}" → switching to "${next.name}"\n`)
-        endSession(sessionId, { exitCode: code, exitReason: EXIT_REASONS.CREDIT_LIMIT, switched: true, switchedTo: next.name, tokens })
-
-        // 1. Git checkpoint
-        let checkpointResult = { skipped: true }
-        if (cfg.gitCheckpoint && projectRoot) {
-          process.stderr.write('[ccm] Running git checkpoint...\n')
-          checkpointResult = await gitCheckpoint(projectRoot, {
-            message: `before switch ${account.name} → ${next.name}`,
-            push: cfg.github?.enabled && cfg.github?.autoPushOnSwitch && cfg.github?.projectSync,
-          })
-          onCheckpoint?.(checkpointResult)
-          if (checkpointResult.success) {
-            await firePluginEvent('onCheckpoint', { commitHash: checkpointResult.commitHash, projectRoot, account: account.name })
-            process.stderr.write(`[ccm] Checkpoint: ${checkpointResult.commitHash || 'ok'}\n`)
+          if (!next) {
+            endSession(sessionId, {
+              exitCode: code,
+              exitReason: EXIT_REASONS.CREDIT_LIMIT_EXHAUSTED,
+              tokens,
+            })
+            process.stderr.write('\n[ccm] All accounts exhausted — no more accounts to try\n')
+            resolve({ code, account, sessionId, exhausted: true })
+            return
           }
-        }
 
-        // 2. Find + transfer session JSONL
-        let nextResumeId = null
-        if (cfg.smartResume) {
-          const session = findLatestSession(account, projectRoot || process.cwd())
-          if (session) {
-            backupSessionFile(session.filePath, { account: account.name, sessionId: session.sessionId, projectRoot })
-            const transfer = transferSession(account, next, session.sessionId, projectRoot || process.cwd())
-            if (transfer.success) {
-              nextResumeId = session.sessionId
-              process.stderr.write(`[ccm] Session transferred (${session.sessionId.slice(0, 8)}…) → resuming on "${next.name}"\n`)
-              // Store the source path so the recursive call can verify resume success
-              opts._verifyResumePath = transfer.fromFile
-            } else {
-              process.stderr.write(`[ccm] Session transfer skipped: ${transfer.reason}\n`)
+          process.stderr.write(
+            `\n[ccm] Credit limit on "${account.name}" → switching to "${next.name}"\n`
+          )
+          endSession(sessionId, {
+            exitCode: code,
+            exitReason: EXIT_REASONS.CREDIT_LIMIT,
+            switched: true,
+            switchedTo: next.name,
+            tokens,
+          })
+
+          // 1. Git checkpoint
+          let checkpointResult = { skipped: true }
+          if (cfg.gitCheckpoint && projectRoot) {
+            process.stderr.write('[ccm] Running git checkpoint...\n')
+            checkpointResult = await gitCheckpoint(projectRoot, {
+              message: `before switch ${account.name} → ${next.name}`,
+              push: cfg.github?.enabled && cfg.github?.autoPushOnSwitch && cfg.github?.projectSync,
+            })
+            onCheckpoint?.(checkpointResult)
+            if (checkpointResult.success) {
+              await firePluginEvent('onCheckpoint', {
+                commitHash: checkpointResult.commitHash,
+                projectRoot,
+                account: account.name,
+              })
+              process.stderr.write(`[ccm] Checkpoint: ${checkpointResult.commitHash || 'ok'}\n`)
             }
-          } else {
-            process.stderr.write('[ccm] No session file found — starting fresh\n')
           }
-        }
 
-        // 3. GitHub push if configured
-        if (cfg.github?.enabled && cfg.github?.autoPushOnSwitch && projectRoot) {
-          pushProject(projectRoot, { message: `switch ${account.name} → ${next.name}` }).catch(() => {})
-        }
+          // 2. Find + transfer session JSONL
+          let nextResumeId = null
+          if (cfg.smartResume) {
+            const session = findLatestSession(account, projectRoot || process.cwd())
+            if (session) {
+              backupSessionFile(session.filePath, {
+                account: account.name,
+                sessionId: session.sessionId,
+                projectRoot,
+              })
+              const transfer = transferSession(
+                account,
+                next,
+                session.sessionId,
+                projectRoot || process.cwd()
+              )
+              if (transfer.success) {
+                nextResumeId = session.sessionId
+                process.stderr.write(
+                  `[ccm] Session transferred (${session.sessionId.slice(0, 8)}…) → resuming on "${next.name}"\n`
+                )
+                // Store the source path so the recursive call can verify resume success
+                opts._verifyResumePath = transfer.fromFile
+              } else {
+                process.stderr.write(`[ccm] Session transfer skipped: ${transfer.reason}\n`)
+              }
+            } else {
+              process.stderr.write('[ccm] No session file found — starting fresh\n')
+            }
+          }
 
-        setActiveAccount(next.name)
-        onSwitch?.(account.name, next.name)
-        await firePluginEvent('onSwitch', { from: account.name, to: next.name, sessionId, projectRoot })
+          // 3. GitHub push if configured
+          if (cfg.github?.enabled && cfg.github?.autoPushOnSwitch && projectRoot) {
+            pushProject(projectRoot, { message: `switch ${account.name} → ${next.name}` }).catch(
+              () => {}
+            )
+          }
 
-        let result
-        try {
-          result = await runClaude(next, args, {
-            ...opts,
-            resumeSessionId: nextResumeId,
-            _exhausted,
+          setActiveAccount(next.name)
+          onSwitch?.(account.name, next.name)
+          await firePluginEvent('onSwitch', {
+            from: account.name,
+            to: next.name,
+            sessionId,
+            projectRoot,
           })
-        } catch (err) {
-          reject(err)
+
+          let result
+          try {
+            result = await runClaude(next, args, {
+              ...opts,
+              resumeSessionId: nextResumeId,
+              _exhausted,
+            })
+          } catch (err) {
+            reject(err)
+            return
+          }
+          resolve(result)
           return
         }
-        resolve(result)
-        return
-      }
 
-      const exitReason = code === 0 ? EXIT_REASONS.NORMAL : EXIT_REASONS.ERROR
-      endSession(sessionId, { exitCode: code, exitReason, tokens })
-      await firePluginEvent('onSessionEnd', { account: account.name, exitReason, durationSec: null, projectRoot })
+        const exitReason = code === 0 ? EXIT_REASONS.NORMAL : EXIT_REASONS.ERROR
+        endSession(sessionId, { exitCode: code, exitReason, tokens })
+        await firePluginEvent('onSessionEnd', {
+          account: account.name,
+          exitReason,
+          durationSec: null,
+          projectRoot,
+        })
 
-      if (cfg.github?.enabled && cfg.github?.autoPushOnEnd && projectRoot) {
-        pushProject(projectRoot, { message: 'session end' }).catch(() => {})
-      }
+        if (cfg.github?.enabled && cfg.github?.autoPushOnEnd && projectRoot) {
+          pushProject(projectRoot, { message: 'session end' }).catch(() => {})
+        }
 
-      resolve({ code, account, sessionId, tokens })
+        resolve({ code, account, sessionId, tokens })
       })().catch(reject)
     })
 
@@ -301,7 +344,9 @@ export async function runClaude(account, args = [], opts = {}) {
       cleanupIsolation()
       endSession(sessionId, { exitCode: -1, exitReason: EXIT_REASONS.SPAWN_ERROR })
       if (err.code === 'ENOENT') {
-        reject(new Error('Claude Code not found — install it with: npm i -g @anthropic-ai/claude-code'))
+        reject(
+          new Error('Claude Code not found — install it with: npm i -g @anthropic-ai/claude-code')
+        )
       } else {
         reject(err)
       }
@@ -314,10 +359,13 @@ export async function loginEmailAccount(account) {
     process.stderr.write(`\n[ccm] Opening browser login for "${account.name}" (${account.email})\n`)
     const cleanupIsolation = prepareIsolation(account)
     const child = spawn('claude', ['auth', 'login'], {
-      env:   buildEnv(account),
+      env: buildEnv(account),
       stdio: 'inherit',
     })
-    child.on('close', code => { cleanupIsolation(); resolve(code) })
+    child.on('close', code => {
+      cleanupIsolation()
+      resolve(code)
+    })
     child.on('error', err => {
       cleanupIsolation()
       if (err.code === 'ENOENT') reject(new Error('Claude Code not found'))

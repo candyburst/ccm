@@ -1,30 +1,35 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { listWorkers, stopWorker, stopAllWorkers } from '../workers.js'
 
-vi.mock('fs', async (orig) => {
+vi.mock('fs', async orig => {
   const actual = await orig()
   let workersStore = '{}'
   const locks = new Set()
   return {
     ...actual,
-    existsSync:    vi.fn((p) => {
+    existsSync: vi.fn(p => {
       if (p.includes('workers.json')) return workersStore !== '{}'
-      if (p.includes('.lock'))        return locks.has(p)
+      if (p.includes('.lock')) return locks.has(p)
       return actual.existsSync(p)
     }),
-    readFileSync:  vi.fn((p, enc) => {
+    readFileSync: vi.fn((p, enc) => {
       if (p.includes('workers.json')) return workersStore
-      if (p.includes('.lock'))        return JSON.stringify({ pid: process.pid })
+      if (p.includes('.lock')) return JSON.stringify({ pid: process.pid })
       return actual.readFileSync(p, enc)
     }),
     writeFileSync: vi.fn((p, d) => {
       if (p.includes('workers.json') || p.endsWith('.tmp')) workersStore = d
       if (p.includes('.lock')) locks.add(p)
     }),
-    renameSync:    vi.fn((from, to) => { workersStore = workersStore }),
-    unlinkSync:    vi.fn((p) => locks.delete(p)),
-    mkdirSync:     vi.fn(),
-    _reset:        () => { workersStore = '{}'; locks.clear() },
+    renameSync: vi.fn((from, to) => {
+      workersStore = workersStore
+    }),
+    unlinkSync: vi.fn(p => locks.delete(p)),
+    mkdirSync: vi.fn(),
+    _reset: () => {
+      workersStore = '{}'
+      locks.clear()
+    },
   }
 })
 

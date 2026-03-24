@@ -1,7 +1,15 @@
 // Session branching — fork a conversation from any checkpoint.
 // Like git branch but for Claude Code sessions.
 
-import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync, renameSync, unlinkSync } from 'fs'
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  copyFileSync,
+  mkdirSync,
+  renameSync,
+  unlinkSync,
+} from 'fs'
 import { join } from 'path'
 import { CCM_DIR } from './config.js'
 import { listCheckpoints } from './checkpoint.js'
@@ -10,8 +18,11 @@ import { debug } from './debug.js'
 const BRANCHES_FILE = join(CCM_DIR, 'branches.json')
 
 function loadBranches() {
-  try { return JSON.parse(readFileSync(BRANCHES_FILE, 'utf8')) }
-  catch { return {} }
+  try {
+    return JSON.parse(readFileSync(BRANCHES_FILE, 'utf8'))
+  } catch {
+    return {}
+  }
 }
 
 function saveBranches(branches) {
@@ -35,12 +46,13 @@ export function createBranch(checkpointId, { name, account, projectRoot }) {
 
   // Find the checkpoint JSONL to use as starting point
   const checkpoints = listCheckpoints()
-  const cp = checkpoints.find(c => c.sessionId === checkpointId ||
-    c.checkpointFile?.includes(checkpointId))
+  const cp = checkpoints.find(
+    c => c.sessionId === checkpointId || c.checkpointFile?.includes(checkpointId)
+  )
   if (!cp) throw new Error(`Checkpoint "${checkpointId}" not found`)
 
   // Copy checkpoint JSONL as the branch's starting session
-  const branchDir  = join(CCM_DIR, 'branches', name)
+  const branchDir = join(CCM_DIR, 'branches', name)
   mkdirSync(branchDir, { recursive: true })
   const branchJSONL = join(branchDir, `${checkpointId}.jsonl`)
 
@@ -50,7 +62,7 @@ export function createBranch(checkpointId, { name, account, projectRoot }) {
 
   branches[name] = {
     parentCheckpoint: checkpointId,
-    parentFile:       cp.checkpointFile,
+    parentFile: cp.checkpointFile,
     branchJSONL,
     account,
     projectRoot,

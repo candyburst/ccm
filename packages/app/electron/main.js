@@ -10,9 +10,11 @@ if (!isDev) {
   try {
     const { autoUpdater: au } = require('electron-updater')
     autoUpdater = au
-    autoUpdater.autoDownload    = true   // download in background
-    autoUpdater.autoInstallOnAppQuit = false  // prompt user before installing
-  } catch { /* electron-updater not available — skip */ }
+    autoUpdater.autoDownload = true // download in background
+    autoUpdater.autoInstallOnAppQuit = false // prompt user before installing
+  } catch {
+    /* electron-updater not available — skip */
+  }
 }
 
 // ── Core module cache ─────────────────────────────────────────────────────────
@@ -59,7 +61,10 @@ if (!gotLock) {
 } else {
   app.on('second-instance', () => {
     const win = BrowserWindow.getAllWindows()[0]
-    if (win) { if (win.isMinimized()) win.restore(); win.focus() }
+    if (win) {
+      if (win.isMinimized()) win.restore()
+      win.focus()
+    }
   })
 
   app.whenReady().then(() => {
@@ -73,10 +78,9 @@ if (!gotLock) {
 
       autoUpdater.on('update-downloaded', () => {
         // Notify user that an update is ready
-        const cfg = null  // cfg will be loaded lazily if needed
+        const cfg = null // cfg will be loaded lazily if needed
         if (BrowserWindow.getAllWindows().length > 0) {
-          BrowserWindow.getAllWindows()[0].webContents
-            .send('update:ready', {})
+          BrowserWindow.getAllWindows()[0].webContents.send('update:ready', {})
         }
       })
     }
@@ -290,7 +294,6 @@ handle('updater:check', async () => {
   }
 })
 
-
 // ── IPC: Export / Import ──────────────────────────────────────────────────────
 
 handle('accounts:export', async (_, { passphrase, plain, includeLog }) => {
@@ -309,7 +312,9 @@ handle('sync:checkpoint-diff', async (_, { projectRoot, commitHash }) => {
   // Run git diff between the given commit and HEAD
   const { spawnSync } = require('child_process')
   const r = spawnSync('git', ['diff', commitHash + '..HEAD', '--stat'], {
-    cwd: projectRoot, encoding: 'utf8', timeout: 10000,
+    cwd: projectRoot,
+    encoding: 'utf8',
+    timeout: 10000,
   })
   return { diff: r.stdout || '', error: r.stderr || '' }
 })
@@ -318,7 +323,9 @@ handle('sync:restore-checkpoint', async (_, { projectRoot, commitHash }) => {
   const { spawnSync } = require('child_process')
   // Hard reset to the checkpoint commit
   const r = spawnSync('git', ['reset', '--hard', commitHash], {
-    cwd: projectRoot, encoding: 'utf8', timeout: 15000,
+    cwd: projectRoot,
+    encoding: 'utf8',
+    timeout: 15000,
   })
   return { success: r.status === 0, output: r.stdout + r.stderr }
 })
@@ -326,10 +333,11 @@ handle('sync:restore-checkpoint', async (_, { projectRoot, commitHash }) => {
 handle('sync:push-all', async () => {
   const { scanAllProjects, pushProject } = await getCoreOnce()
   const projects = scanAllProjects()
-  const results  = await Promise.all(
-    projects.map(p => pushProject(p.projectRoot, { message: 'push all' })
-      .then(r => ({ project: p.name, ...r }))
-      .catch(e => ({ project: p.name, success: false, error: e.message }))
+  const results = await Promise.all(
+    projects.map(p =>
+      pushProject(p.projectRoot, { message: 'push all' })
+        .then(r => ({ project: p.name, ...r }))
+        .catch(e => ({ project: p.name, success: false, error: e.message }))
     )
   )
   return results
@@ -345,13 +353,13 @@ handle('runner:start', async (event, opts) => {
   if (activeSessions.has(senderId)) {
     return { ok: false, error: 'session_already_running' }
   }
-  activeSessions.set(senderId, null)  // reserve slot immediately — before any async gap
+  activeSessions.set(senderId, null) // reserve slot immediately — before any async gap
 
   const { getAccount, loadSyncConfig, runClaude } = await getCoreOnce()
   const { accountName, flags = [], projectRoot, projectName } = opts
 
   const account = getAccount(accountName)
-  const cfg     = loadSyncConfig()
+  const cfg = loadSyncConfig()
 
   const send = (type, payload) => {
     if (!event.sender.isDestroyed()) event.sender.send('runner:event', { type, ...payload })
@@ -364,42 +372,48 @@ handle('runner:start', async (event, opts) => {
   send('started', { accountName, projectName })
 
   runClaude(account, flags, {
-    autoSwitch:  true,
+    autoSwitch: true,
     projectRoot,
     projectName,
-    onPid:       (pid) => {
+    onPid: pid => {
       const s = activeSessions.get(senderId)
       if (s) s.pid = pid
     },
-    onStdout:    (txt) => send('stdout', { text: txt }),
-    onLog:       (txt) => send('stderr', { text: txt }),
-    onSwitch:    (from, to) => {
+    onStdout: txt => send('stdout', { text: txt }),
+    onLog: txt => send('stderr', { text: txt }),
+    onSwitch: (from, to) => {
       send('credit-error', { from, to })
       notifications.notifySwitch(from, to, cfg)
     },
-    onCheckpoint:(r) => {
+    onCheckpoint: r => {
       send('checkpoint', { result: r })
       if (r.success) notifications.notifyCheckpoint(r.commitHash, cfg)
     },
-  }).then(result => {
-    activeSessions.delete(senderId)
-    send('closed', { code: result?.code, exhausted: !!result?.exhausted })
-    if (result?.exhausted) {
-      notifications.notifyAllExhausted(cfg)
-    } else {
-      notifications.notifySessionEnd(accountName, result?.durationSec ?? 0, cfg)
-    }
-  }).catch(err => {
-    activeSessions.delete(senderId)
-    send('error', { message: err.message })
   })
+    .then(result => {
+      activeSessions.delete(senderId)
+      send('closed', { code: result?.code, exhausted: !!result?.exhausted })
+      if (result?.exhausted) {
+        notifications.notifyAllExhausted(cfg)
+      } else {
+        notifications.notifySessionEnd(accountName, result?.durationSec ?? 0, cfg)
+      }
+    })
+    .catch(err => {
+      activeSessions.delete(senderId)
+      send('error', { message: err.message })
+    })
 })
 
-handle('runner:stop', async (event) => {
+handle('runner:stop', async event => {
   const senderId = event.sender.id
-  const session  = activeSessions.get(senderId)
+  const session = activeSessions.get(senderId)
   if (session?.pid) {
-    try { process.kill(session.pid, 'SIGTERM') } catch { /* already exited */ }
+    try {
+      process.kill(session.pid, 'SIGTERM')
+    } catch {
+      /* already exited */
+    }
   }
   activeSessions.delete(senderId)
 })

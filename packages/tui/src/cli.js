@@ -1,45 +1,69 @@
 import chalk from 'chalk'
 import {
-  listAccounts, getActiveAccount, getAccount, setActiveAccount, updateAccount,
-  loadProject, initProject, bindProject,
-  loginEmailAccount, runClaude,
+  listAccounts,
+  getActiveAccount,
+  getAccount,
+  setActiveAccount,
+  updateAccount,
+  loadProject,
+  initProject,
+  bindProject,
+  loginEmailAccount,
+  runClaude,
   AUTH,
-  loadSyncConfig, saveSyncConfig,
-  getGitStatus, gitCheckpoint,
-  listCheckpoints, pushProject,
+  loadSyncConfig,
+  saveSyncConfig,
+  getGitStatus,
+  gitCheckpoint,
+  listCheckpoints,
+  pushProject,
   listSessionFiles,
 } from '@ccm/core'
 
-function die(msg)  { console.error(chalk.red(`✗ ${msg}`)); process.exit(1) }
-function ok(msg)   { console.log(chalk.green(`✓ ${msg}`)) }
-function dim(msg)  { console.log(chalk.dim(msg)) }
-function info(msg) { console.log(chalk.cyan(msg)) }
+function die(msg) {
+  console.error(chalk.red(`✗ ${msg}`))
+  process.exit(1)
+}
+function ok(msg) {
+  console.log(chalk.green(`✓ ${msg}`))
+}
+function dim(msg) {
+  console.log(chalk.dim(msg))
+}
+function info(msg) {
+  console.log(chalk.cyan(msg))
+}
 
 // ─── ccm status ──────────────────────────────────────────────────────────────
 function cmdStatus() {
-  const active   = getActiveAccount()
-  const project  = loadProject()
+  const active = getActiveAccount()
+  const project = loadProject()
   const accounts = listAccounts()
 
   console.log('')
   if (active) {
-    const typeTag = active.type === AUTH.API_KEY
-      ? chalk.cyan('api key')
-      : chalk.magenta(`email: ${active.email}`)
+    const typeTag =
+      active.type === AUTH.API_KEY ? chalk.cyan('api key') : chalk.magenta(`email: ${active.email}`)
     console.log(`  ${chalk.bold('Active account:')} ${chalk.white(active.name)} (${typeTag})`)
   } else {
     console.log(`  ${chalk.bold('Active account:')} ${chalk.yellow('none')}`)
   }
 
   if (project) {
-    console.log(`  ${chalk.bold('Project:')}        ${chalk.white(project.name)} → bound to ${chalk.cyan(project.account)}`)
+    console.log(
+      `  ${chalk.bold('Project:')}        ${chalk.white(project.name)} → bound to ${chalk.cyan(project.account)}`
+    )
     console.log(`  ${chalk.bold('Root:')}           ${chalk.dim(project.projectRoot)}`)
     const gs = getGitStatus(project.projectRoot)
     if (gs.isGitRepo) {
-      const dirtyTag = gs.isDirty ? chalk.yellow(`${gs.changedFiles} uncommitted`) : chalk.green('clean')
+      const dirtyTag = gs.isDirty
+        ? chalk.yellow(`${gs.changedFiles} uncommitted`)
+        : chalk.green('clean')
       const remoteTag = gs.hasRemote ? chalk.green('remote ok') : chalk.yellow('no remote')
-      const aheadTag  = gs.aheadCount > 0 ? chalk.yellow(` ${gs.aheadCount} unpushed`) : ''
-      console.log(`  ${chalk.bold('Git:')}            ${gs.branch} · ${dirtyTag} · ${remoteTag}${aheadTag}`)
+      const aheadTag = gs.aheadCount > 0 ? chalk.yellow(` ${gs.aheadCount} unpushed`) : ''
+      console.log(
+        `  ${chalk.bold('Git:')}            ${gs.branch} · ${dirtyTag} · ${remoteTag}${aheadTag}`
+      )
     }
   } else {
     console.log(`  ${chalk.bold('Project:')}        ${chalk.dim('none')}`)
@@ -49,10 +73,10 @@ function cmdStatus() {
   console.log('')
 
   for (const a of accounts) {
-    const dot   = a.active ? chalk.green('●') : chalk.dim('○')
-    const type  = a.type === AUTH.API_KEY ? chalk.cyan('[api]') : chalk.magenta('[email]')
+    const dot = a.active ? chalk.green('●') : chalk.dim('○')
+    const type = a.type === AUTH.API_KEY ? chalk.cyan('[api]') : chalk.magenta('[email]')
     const extra = a.type === AUTH.EMAIL ? chalk.dim(` ${a.email}`) : ''
-    const dis   = a.disabled ? chalk.red(' [disabled]') : ''
+    const dis = a.disabled ? chalk.red(' [disabled]') : ''
     console.log(`  ${dot} ${chalk.white(a.name)} ${type}${extra}${dis}`)
   }
   console.log('')
@@ -66,7 +90,9 @@ function cmdSwitch(args) {
     getAccount(name)
     setActiveAccount(name)
     ok(`Active account → "${name}"`)
-  } catch (e) { die(e.message) }
+  } catch (e) {
+    die(e.message)
+  }
 }
 
 // ─── ccm login <n> ───────────────────────────────────────────────────────────
@@ -75,29 +101,32 @@ async function cmdLogin(args) {
   if (!name) die('Usage: ccm login <account-name>')
   try {
     const account = getAccount(name)
-    if (account.type !== AUTH.EMAIL) die(`"${name}" is an API key account — no browser login needed`)
+    if (account.type !== AUTH.EMAIL)
+      die(`"${name}" is an API key account — no browser login needed`)
     dim(`Opening browser login for "${name}" (${account.email})…`)
     await loginEmailAccount(account)
     ok(`Login complete for "${name}"`)
-  } catch (e) { die(e.message) }
+  } catch (e) {
+    die(e.message)
+  }
 }
 
 // ─── ccm run [opts] [-- <claude flags>] ──────────────────────────────────────
 async function cmdRun(args) {
   let accountOverride = null
-  let noAutoSwitch    = false
-  let noResume        = false
-  let watchMode       = false
+  let noAutoSwitch = false
+  let noResume = false
+  let watchMode = false
 
-  const sepIdx   = args.indexOf('--')
-  const ourArgs  = sepIdx >= 0 ? args.slice(0, sepIdx) : args
+  const sepIdx = args.indexOf('--')
+  const ourArgs = sepIdx >= 0 ? args.slice(0, sepIdx) : args
   const claudeArgs = sepIdx >= 0 ? args.slice(sepIdx + 1) : []
 
   for (let i = 0; i < ourArgs.length; i++) {
     if (ourArgs[i] === '--account' || ourArgs[i] === '-a') accountOverride = ourArgs[++i]
     if (ourArgs[i] === '--no-auto-switch') noAutoSwitch = true
-    if (ourArgs[i] === '--no-resume')      noResume     = true
-    if (ourArgs[i] === '--watch')          watchMode    = true
+    if (ourArgs[i] === '--no-resume') noResume = true
+    if (ourArgs[i] === '--watch') watchMode = true
   }
 
   let accountName = accountOverride
@@ -112,31 +141,45 @@ async function cmdRun(args) {
   if (!accountName) die('No account selected.\n  Run: ccm switch <n>  or  ccm project init')
 
   let account
-  try { account = getAccount(accountName) } catch (e) { die(e.message) }
+  try {
+    account = getAccount(accountName)
+  } catch (e) {
+    die(e.message)
+  }
 
   const project = loadProject()
-  const cfg     = loadSyncConfig()
+  const cfg = loadSyncConfig()
 
-  console.log(chalk.dim(`\n[ccm] account: ${account.name} (${account.type === AUTH.API_KEY ? 'api key' : account.email})`))
+  console.log(
+    chalk.dim(
+      `\n[ccm] account: ${account.name} (${account.type === AUTH.API_KEY ? 'api key' : account.email})`
+    )
+  )
   if (project) console.log(chalk.dim(`[ccm] project: ${project.name}`))
-  console.log(chalk.dim(`[ccm] smart resume: ${cfg.smartResume && !noResume ? 'on' : 'off'} · git checkpoint: ${cfg.gitCheckpoint ? 'on' : 'off'}`))
+  console.log(
+    chalk.dim(
+      `[ccm] smart resume: ${cfg.smartResume && !noResume ? 'on' : 'off'} · git checkpoint: ${cfg.gitCheckpoint ? 'on' : 'off'}`
+    )
+  )
   console.log('')
 
   try {
     const runner = watchMode ? watchClaude : runClaude
     await runner(account, claudeArgs, {
-      autoSwitch:  !noAutoSwitch,
+      autoSwitch: !noAutoSwitch,
       smartResume: cfg.smartResume && !noResume,
       projectName: project?.name,
       projectRoot: project?.projectRoot,
       onSwitch: (from, to) => {
         console.error(chalk.yellow(`\n[ccm] Credit limit on "${from}" → switching to "${to}"\n`))
       },
-      onCheckpoint: (r) => {
+      onCheckpoint: r => {
         if (r.success) console.error(chalk.dim(`[ccm] Checkpoint: ${r.commitHash}`))
       },
     })
-  } catch (e) { die(e.message) }
+  } catch (e) {
+    die(e.message)
+  }
 }
 
 // ─── ccm project <sub> ───────────────────────────────────────────────────────
@@ -154,21 +197,30 @@ async function cmdProject(args) {
       const config = initProject(process.cwd(), accountName)
       ok(`Project "${config.name}" initialised → bound to "${accountName}"`)
       dim('  Run: ccm run')
-    } catch (e) { die(e.message) }
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
   if (sub === 'bind') {
     const accountName = args[1]
     if (!accountName) die('Usage: ccm project bind <account-name>')
-    try { bindProject(process.cwd(), accountName); ok(`Project rebound to "${accountName}"`) }
-    catch (e) { die(e.message) }
+    try {
+      bindProject(process.cwd(), accountName)
+      ok(`Project rebound to "${accountName}"`)
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
   if (sub === 'status') {
     const project = loadProject()
-    if (!project) { dim('No project found here.'); return }
+    if (!project) {
+      dim('No project found here.')
+      return
+    }
     console.log('')
     console.log(`  ${chalk.bold('Name:')}    ${project.name}`)
     console.log(`  ${chalk.bold('Account:')} ${chalk.cyan(project.account)}`)
@@ -191,17 +243,28 @@ async function cmdSync(args) {
     const cfg = loadSyncConfig()
     const project = loadProject()
     console.log('')
-    console.log(`  ${chalk.bold('Smart resume:')}   ${cfg.smartResume   ? chalk.green('on') : chalk.gray('off')}`)
-    console.log(`  ${chalk.bold('Git checkpoint:')} ${cfg.gitCheckpoint ? chalk.green('on') : chalk.gray('off')}`)
-    console.log(`  ${chalk.bold('GitHub sync:')}    ${cfg.github?.enabled ? chalk.green('on') : chalk.gray('off')}`)
+    console.log(
+      `  ${chalk.bold('Smart resume:')}   ${cfg.smartResume ? chalk.green('on') : chalk.gray('off')}`
+    )
+    console.log(
+      `  ${chalk.bold('Git checkpoint:')} ${cfg.gitCheckpoint ? chalk.green('on') : chalk.gray('off')}`
+    )
+    console.log(
+      `  ${chalk.bold('GitHub sync:')}    ${cfg.github?.enabled ? chalk.green('on') : chalk.gray('off')}`
+    )
     if (project) {
       const gs = getGitStatus(project.projectRoot)
       console.log('')
       if (gs.isGitRepo) {
         console.log(`  ${chalk.bold('Branch:')}  ${gs.branch}`)
-        console.log(`  ${chalk.bold('Dirty:')}   ${gs.isDirty ? chalk.yellow('yes') : chalk.green('no')}`)
-        console.log(`  ${chalk.bold('Remote:')}  ${gs.hasRemote ? chalk.green('yes') : chalk.yellow('no')}`)
-        if (gs.aheadCount > 0) console.log(`  ${chalk.bold('Ahead:')}   ${chalk.yellow(gs.aheadCount)} commits`)
+        console.log(
+          `  ${chalk.bold('Dirty:')}   ${gs.isDirty ? chalk.yellow('yes') : chalk.green('no')}`
+        )
+        console.log(
+          `  ${chalk.bold('Remote:')}  ${gs.hasRemote ? chalk.green('yes') : chalk.yellow('no')}`
+        )
+        if (gs.aheadCount > 0)
+          console.log(`  ${chalk.bold('Ahead:')}   ${chalk.yellow(gs.aheadCount)} commits`)
       } else {
         console.log(`  ${chalk.dim('Project is not a git repo')}`)
       }
@@ -212,31 +275,35 @@ async function cmdSync(args) {
 
   if (sub === 'checkpoint') {
     const project = loadProject()
-    const root    = args[1] || project?.projectRoot || process.cwd()
-    const cfg     = loadSyncConfig()
+    const root = args[1] || project?.projectRoot || process.cwd()
+    const cfg = loadSyncConfig()
     info('Checkpointing...')
     try {
       const r = await gitCheckpoint(root, {
         message: 'manual checkpoint',
         push: cfg.github?.enabled && cfg.github?.projectSync,
       })
-      if (r.success)  ok(`Checkpoint: ${r.commitHash}${r.pushed ? ' (pushed)' : ''}`)
+      if (r.success) ok(`Checkpoint: ${r.commitHash}${r.pushed ? ' (pushed)' : ''}`)
       else if (r.skipped) dim(`Skipped: ${r.reason}`)
       else die(`Failed: ${r.reason}`)
-    } catch (e) { die(e.message) }
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
   if (sub === 'push') {
     const project = loadProject()
-    const root    = args[1] || project?.projectRoot || process.cwd()
+    const root = args[1] || project?.projectRoot || process.cwd()
     info('Pushing to remote...')
     try {
       const r = await pushProject(root, { message: 'manual push' })
-      if (r.success)  ok(`Pushed: ${r.commitHash}`)
+      if (r.success) ok(`Pushed: ${r.commitHash}`)
       else if (r.skipped) dim(`Skipped: ${r.reason}`)
       else die(`Failed: ${r.reason}`)
-    } catch (e) { die(e.message) }
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
@@ -247,7 +314,11 @@ async function cmdSync(args) {
     if (!feature || !validFeatures.includes(feature)) {
       die(`Usage: ccm sync on|off <${validFeatures.join('|')}>`)
     }
-    const keyMap = { 'smart-resume': 'smartResume', 'git-checkpoint': 'gitCheckpoint', 'github': 'github.enabled' }
+    const keyMap = {
+      'smart-resume': 'smartResume',
+      'git-checkpoint': 'gitCheckpoint',
+      github: 'github.enabled',
+    }
     const key = keyMap[feature]
     const val = sub === 'on'
     if (key.includes('.')) {
@@ -263,11 +334,16 @@ async function cmdSync(args) {
 
   if (sub === 'checkpoints') {
     const checkpoints = listCheckpoints(args[1] || null)
-    if (!checkpoints.length) { dim('No checkpoints yet.'); return }
+    if (!checkpoints.length) {
+      dim('No checkpoints yet.')
+      return
+    }
     console.log('')
     for (const cp of checkpoints.slice(0, 20)) {
       const date = new Date(cp.savedAt).toLocaleString()
-      console.log(`  ${chalk.cyan(cp.account)}  ${chalk.dim(date)}  ${chalk.dim(cp.projectRoot || '')}`)
+      console.log(
+        `  ${chalk.cyan(cp.account)}  ${chalk.dim(date)}  ${chalk.dim(cp.projectRoot || '')}`
+      )
     }
     console.log('')
     return
@@ -277,17 +353,24 @@ async function cmdSync(args) {
     const accountName = args[1]
     if (!accountName) die('Usage: ccm sync sessions <account-name>')
     try {
-      const account  = getAccount(accountName)
+      const account = getAccount(accountName)
       const sessions = listSessionFiles(account)
-      if (!sessions.length) { dim(`No sessions found for "${accountName}".`); return }
+      if (!sessions.length) {
+        dim(`No sessions found for "${accountName}".`)
+        return
+      }
       console.log('')
       for (const s of sessions.slice(0, 20)) {
         const date = new Date(s.modifiedAt).toLocaleString()
-        const kb   = Math.round(s.sizeBytes / 1024)
-        console.log(`  ${chalk.cyan(s.sessionId.slice(0, 12))}…  ${chalk.dim(date)}  ${chalk.dim(kb + 'kb')}`)
+        const kb = Math.round(s.sizeBytes / 1024)
+        console.log(
+          `  ${chalk.cyan(s.sessionId.slice(0, 12))}…  ${chalk.dim(date)}  ${chalk.dim(kb + 'kb')}`
+        )
       }
       console.log('')
-    } catch (e) { die(e.message) }
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
@@ -304,7 +387,7 @@ async function cmdSync(args) {
 async function cmdUi() {
   const { render } = await import('ink')
   const React = (await import('react')).default
-  const App   = (await import('../screens/../App.js')).default
+  const App = (await import('../screens/../App.js')).default
   const { waitUntilExit } = render(React.createElement(App, { args: [] }))
   await waitUntilExit()
 }
@@ -366,10 +449,9 @@ ${chalk.bold('Examples:')}
 `)
 }
 
-
 // ─── ccm account <sub> ────────────────────────────────────────────────────────
 async function cmdAccount(args) {
-  const sub  = args[0]
+  const sub = args[0]
   const name = args[1]
 
   if (sub === 'disable') {
@@ -378,7 +460,9 @@ async function cmdAccount(args) {
       getAccount(name)
       updateAccount(name, { disabled: true })
       ok(`"${name}" disabled — skipped during account rotation`)
-    } catch (e) { die(e.message) }
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
@@ -388,7 +472,9 @@ async function cmdAccount(args) {
       getAccount(name)
       updateAccount(name, { disabled: false })
       ok(`"${name}" enabled — included in account rotation`)
-    } catch (e) { die(e.message) }
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
@@ -396,8 +482,12 @@ async function cmdAccount(args) {
     if (!name) die('Usage: ccm account update <account-name> [--key sk-...] [--notes "..."]')
     const updates = {}
     for (let i = 2; i < args.length; i++) {
-      if (args[i] === '--key'   && args[i + 1]) { updates.apiKey = args[++i] }
-      if (args[i] === '--notes' && args[i + 1]) { updates.notes  = args[++i] }
+      if (args[i] === '--key' && args[i + 1]) {
+        updates.apiKey = args[++i]
+      }
+      if (args[i] === '--notes' && args[i + 1]) {
+        updates.notes = args[++i]
+      }
     }
     if (Object.keys(updates).length === 0) {
       die('Nothing to update. Use --key <sk-...> or --notes "<text>"')
@@ -412,21 +502,26 @@ async function cmdAccount(args) {
         if (!check.valid) die(check.hint || `Invalid API key: ${check.reason}`)
       }
       updateAccount(name, updates)
-      if (updates.apiKey)  ok(`API key updated for "${name}"`)
-      if (updates.notes)   ok(`Notes updated for "${name}": ${updates.notes}`)
-    } catch (e) { die(e.message) }
+      if (updates.apiKey) ok(`API key updated for "${name}"`)
+      if (updates.notes) ok(`Notes updated for "${name}": ${updates.notes}`)
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
   // ccm account (no subcommand) — show account list
   const accounts = listAccounts()
-  if (!accounts.length) { dim('No accounts. Run: ccm account add (via ccm TUI)'); return }
+  if (!accounts.length) {
+    dim('No accounts. Run: ccm account add (via ccm TUI)')
+    return
+  }
   console.log('')
   for (const a of accounts) {
-    const dot  = a.active   ? chalk.green('●') : chalk.dim('○')
+    const dot = a.active ? chalk.green('●') : chalk.dim('○')
     const type = a.type === 'api_key' ? chalk.cyan('[api]') : chalk.magenta('[email]')
-    const dis  = a.disabled  ? chalk.red(' disabled') : ''
-    const note = a.notes     ? chalk.dim(` — ${a.notes}`) : ''
+    const dis = a.disabled ? chalk.red(' disabled') : ''
+    const note = a.notes ? chalk.dim(` — ${a.notes}`) : ''
     console.log(`  ${dot} ${chalk.white(a.name)} ${type}${dis}${note}`)
   }
   console.log('')
@@ -438,11 +533,10 @@ async function cmdAccount(args) {
   console.log('')
 }
 
-
 // ─── ccm export ──────────────────────────────────────────────────────────────
 async function cmdExport(args) {
   let passphrase = null
-  let plain      = false
+  let plain = false
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--passphrase' || args[i] === '-p') passphrase = args[++i]
@@ -451,14 +545,18 @@ async function cmdExport(args) {
 
   if (!passphrase && !plain) {
     console.error(chalk.yellow('⚠  No --passphrase provided. Keys will be stored in plaintext.'))
-    console.error(chalk.yellow('   Use: ccm export --passphrase <secret>  for a portable encrypted backup.'))
+    console.error(
+      chalk.yellow('   Use: ccm export --passphrase <secret>  for a portable encrypted backup.')
+    )
     console.error('')
   }
 
   try {
     const json = exportAccounts({ passphrase, plain: plain || !passphrase })
     process.stdout.write(json)
-  } catch (e) { die(e.message) }
+  } catch (e) {
+    die(e.message)
+  }
 }
 
 // ─── ccm import ──────────────────────────────────────────────────────────────
@@ -475,17 +573,20 @@ async function cmdImport(args) {
   try {
     const { readFileSync } = await import('fs')
     jsonStr = readFileSync(file, 'utf8')
-  } catch { die(`Cannot read file: ${file}`) }
+  } catch {
+    die(`Cannot read file: ${file}`)
+  }
 
   try {
     const { imported, skipped, errors } = importAccounts(jsonStr, passphrase)
-    if (imported > 0)  ok(`Imported ${imported} account${imported !== 1 ? 's' : ''}`)
+    if (imported > 0) ok(`Imported ${imported} account${imported !== 1 ? 's' : ''}`)
     if (skipped.length) skipped.forEach(s => dim(`  skipped: ${s}`))
-    if (errors.length)  errors.forEach(e => console.error(chalk.red(`  ✗ ${e}`)))
+    if (errors.length) errors.forEach(e => console.error(chalk.red(`  ✗ ${e}`)))
     if (imported === 0 && errors.length === 0) dim('Nothing to import.')
-  } catch (e) { die(e.message) }
+  } catch (e) {
+    die(e.message)
+  }
 }
-
 
 // ─── ccm hooks ───────────────────────────────────────────────────────────────
 function cmdHooks(args) {
@@ -532,7 +633,7 @@ async function cmdServe(args) {
 
 // ─── ccm plugin ──────────────────────────────────────────────────────────────
 function cmdPlugin(args) {
-  const sub  = args[0]
+  const sub = args[0]
   const name = args[1]
 
   if (sub === 'disable' && name) {
@@ -562,7 +663,6 @@ function cmdPlugin(args) {
   console.log('')
 }
 
-
 // ─── ccm compress ─────────────────────────────────────────────────────────────
 async function cmdCompress(args) {
   const dryRun = args.includes('--dry-run')
@@ -577,19 +677,32 @@ async function cmdCompress(args) {
 
   // Note: compressSession sends session content to the Anthropic API
   // Users should be aware their session text is transmitted for summarisation
-  const result = await compressSession(session.filePath, account, { dryRun, explicitlyEnabled: true })
+  const result = await compressSession(session.filePath, account, {
+    dryRun,
+    explicitlyEnabled: true,
+  })
   if (result.skipped) {
     if (result.reason === 'disabled') {
-      console.log(chalk.yellow('Compression is disabled by default — it sends session text to the Anthropic API.'))
+      console.log(
+        chalk.yellow(
+          'Compression is disabled by default — it sends session text to the Anthropic API.'
+        )
+      )
       console.log(chalk.dim('Enable it with: ccm sync on compression'))
     } else {
-      dim(`Skipped: ${result.reason}${result.originalTokens ? ` (${result.originalTokens.toLocaleString()} tokens)` : ''}`)
+      dim(
+        `Skipped: ${result.reason}${result.originalTokens ? ` (${result.originalTokens.toLocaleString()} tokens)` : ''}`
+      )
     }
   } else if (result.dryRun) {
-    info(`Would compress: ${result.messagesToSummarise} messages → summary + ${result.messagesToKeep} recent`)
+    info(
+      `Would compress: ${result.messagesToSummarise} messages → summary + ${result.messagesToKeep} recent`
+    )
     info(`Estimated tokens: ${result.originalTokens?.toLocaleString()} → much less`)
   } else {
-    ok(`Compressed: ${result.originalTokens?.toLocaleString()} → ${result.newTokens?.toLocaleString()} tokens`)
+    ok(
+      `Compressed: ${result.originalTokens?.toLocaleString()} → ${result.newTokens?.toLocaleString()} tokens`
+    )
     dim(`Original backed up to: ${result.backupPath}`)
   }
 }
@@ -601,31 +714,46 @@ function cmdBranch(args) {
   if (sub === 'create') {
     const checkpointId = args[1]
     const nameIdx = args.indexOf('--name')
-    const name    = nameIdx >= 0 ? args[nameIdx + 1] : null
+    const name = nameIdx >= 0 ? args[nameIdx + 1] : null
     if (!checkpointId) die('Usage: ccm branch create <checkpoint-id> --name <n>')
     if (!name) die('Usage: ccm branch create <checkpoint-id> --name <n>')
     const account = getActiveAccount()
     const project = loadProject()
     try {
-      createBranch(checkpointId, { name, account: account?.name, projectRoot: project?.projectRoot })
+      createBranch(checkpointId, {
+        name,
+        account: account?.name,
+        projectRoot: project?.projectRoot,
+      })
       ok(`Branch "${name}" created from checkpoint ${checkpointId.slice(0, 8)}`)
-    } catch (e) { die(e.message) }
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
   if (sub === 'delete' && args[1]) {
-    try { deleteBranch(args[1]); ok(`Branch "${args[1]}" deleted`) }
-    catch (e) { die(e.message) }
+    try {
+      deleteBranch(args[1])
+      ok(`Branch "${args[1]}" deleted`)
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
   // Default: list
   const branches = listBranches()
-  if (branches.length === 0) { dim('No branches. Use: ccm branch create <checkpoint-id> --name <n>'); return }
+  if (branches.length === 0) {
+    dim('No branches. Use: ccm branch create <checkpoint-id> --name <n>')
+    return
+  }
   console.log('')
   for (const b of branches) {
     console.log(`  ${chalk.cyan(b.name)}`)
-    console.log(`    ${chalk.dim('parent: ' + b.parentCheckpoint.slice(0, 8) + '  created: ' + b.createdAt.slice(0, 10))}`)
+    console.log(
+      `    ${chalk.dim('parent: ' + b.parentCheckpoint.slice(0, 8) + '  created: ' + b.createdAt.slice(0, 10))}`
+    )
   }
   console.log('')
 }
@@ -645,23 +773,35 @@ async function cmdQueue(args) {
   if (sub === 'run') {
     info('Running task queue...')
     await runQueue({
-      onTaskStart:    t => dim(`→ ${t.name}`),
+      onTaskStart: t => dim(`→ ${t.name}`),
       onTaskComplete: t => ok(`✓ ${t.name}`),
-      onTaskError:    (t, e) => console.error(chalk.red(`✗ ${t.name}: ${e.message}`)),
+      onTaskError: (t, e) => console.error(chalk.red(`✗ ${t.name}: ${e.message}`)),
     })
     ok('Queue complete')
     return
   }
 
-  if (sub === 'clear') { clearQueue(); ok('Queue cleared'); return }
-  if (sub === 'pause') { pauseQueue(); dim('Queue paused after current task'); return }
+  if (sub === 'clear') {
+    clearQueue()
+    ok('Queue cleared')
+    return
+  }
+  if (sub === 'pause') {
+    pauseQueue()
+    dim('Queue paused after current task')
+    return
+  }
 
   // Default: status
   const tasks = listTasks()
-  if (tasks.length === 0) { dim('Queue is empty. Add tasks: ccm queue add "<prompt>"'); return }
+  if (tasks.length === 0) {
+    dim('Queue is empty. Add tasks: ccm queue add "<prompt>"')
+    return
+  }
   console.log('')
   for (const t of tasks) {
-    const color = { pending: 'gray', running: 'cyan', done: 'green', failed: 'red' }[t.status] || 'gray'
+    const color =
+      { pending: 'gray', running: 'cyan', done: 'green', failed: 'red' }[t.status] || 'gray'
     console.log(`  ${chalk[color](t.status.padEnd(8))}  ${chalk.white(t.name)}`)
   }
   console.log('')
@@ -669,11 +809,15 @@ async function cmdQueue(args) {
 
 // ─── ccm worker ───────────────────────────────────────────────────────────────
 async function cmdWorker(args) {
-  const sub  = args[0]
+  const sub = args[0]
   const name = args[1]
 
   if (sub === 'stop') {
-    if (args[1] === '--all') { stopAllWorkers(); ok('All workers stopped'); return }
+    if (args[1] === '--all') {
+      stopAllWorkers()
+      ok('All workers stopped')
+      return
+    }
     if (!name) die('Usage: ccm worker stop <name>')
     stopWorker(name) ? ok(`Worker "${name}" stopped`) : die(`Worker "${name}" not found`)
     return
@@ -681,11 +825,18 @@ async function cmdWorker(args) {
 
   // Default: list
   const workers = listWorkers()
-  if (workers.length === 0) { dim('No active workers. Start one: ccm run --worker <name>'); return }
+  if (workers.length === 0) {
+    dim('No active workers. Start one: ccm run --worker <name>')
+    return
+  }
   console.log('')
   for (const w of workers) {
-    const runtime = w.startedAt ? Math.round((Date.now() - new Date(w.startedAt)) / 60000) + 'm' : '?'
-    console.log(`  ${chalk.cyan(w.name.padEnd(20))} ${chalk.white(w.account)}  ${chalk.dim(runtime)}`)
+    const runtime = w.startedAt
+      ? Math.round((Date.now() - new Date(w.startedAt)) / 60000) + 'm'
+      : '?'
+    console.log(
+      `  ${chalk.cyan(w.name.padEnd(20))} ${chalk.white(w.account)}  ${chalk.dim(runtime)}`
+    )
   }
   console.log('')
 }
@@ -697,39 +848,61 @@ async function cmdTeam(args) {
   if (sub === 'init') {
     const url = args[1]
     if (!url) die('Usage: ccm team init <git-repo-url>')
-    try { initTeam(url); ok(`Team initialised with repo: ${url}`) }
-    catch (e) { die(e.message) }
+    try {
+      initTeam(url)
+      ok(`Team initialised with repo: ${url}`)
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
   if (sub === 'sync') {
-    try { syncTeam(); ok('Team config synced') }
-    catch (e) { die(e.message) }
+    try {
+      syncTeam()
+      ok('Team config synced')
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
   if (sub === 'unlock' && args[1]) {
-    try { unlockTeamAccount(args[1]); ok(`Lock released for "${args[1]}"`) }
-    catch (e) { die(e.message) }
+    try {
+      unlockTeamAccount(args[1])
+      ok(`Lock released for "${args[1]}"`)
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
   // Default: status
   try {
     const status = getTeamStatus()
-    if (!status) { die('Team not initialised — run: ccm team init <repo-url>'); return }
-    if (status.locks.length === 0) { dim('All accounts free'); return }
-    console.log('')
-    for (const l of status.locks) {
-      console.log(`  ${chalk.yellow('locked')}  ${chalk.white(l.account)}  ${chalk.dim('by ' + l.user + ' since ' + l.lockedAt?.slice(0, 16))}`)
+    if (!status) {
+      die('Team not initialised — run: ccm team init <repo-url>')
+      return
+    }
+    if (status.locks.length === 0) {
+      dim('All accounts free')
+      return
     }
     console.log('')
-  } catch (e) { die(e.message) }
+    for (const l of status.locks) {
+      console.log(
+        `  ${chalk.yellow('locked')}  ${chalk.white(l.account)}  ${chalk.dim('by ' + l.user + ' since ' + l.lockedAt?.slice(0, 16))}`
+      )
+    }
+    console.log('')
+  } catch (e) {
+    die(e.message)
+  }
 }
 
 // ─── ccm prompt ───────────────────────────────────────────────────────────────
 function cmdPrompt(args) {
-  const sub  = args[0]
+  const sub = args[0]
   const name = args[1]
 
   if (sub === 'save') {
@@ -747,19 +920,28 @@ function cmdPrompt(args) {
       console.log(chalk.cyan(p.name))
       console.log(chalk.dim(p.template))
       console.log('')
-    } catch (e) { die(e.message) }
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
   if (sub === 'delete' && name) {
-    try { deletePrompt(name); ok(`Prompt "${name}" deleted`) }
-    catch (e) { die(e.message) }
+    try {
+      deletePrompt(name)
+      ok(`Prompt "${name}" deleted`)
+    } catch (e) {
+      die(e.message)
+    }
     return
   }
 
   // Default: list
   const prompts = listPrompts()
-  if (prompts.length === 0) { dim('No prompts saved. Use: ccm prompt save <name> "<template>"'); return }
+  if (prompts.length === 0) {
+    dim('No prompts saved. Use: ccm prompt save <name> "<template>"')
+    return
+  }
   console.log('')
   for (const p of prompts) {
     console.log(`  ${chalk.cyan(p.name.padEnd(20))} ${chalk.dim(p.template.slice(0, 60))}`)
@@ -769,10 +951,10 @@ function cmdPrompt(args) {
 
 // ─── ccm agent ────────────────────────────────────────────────────────────────
 async function cmdAgent(args) {
-  let port  = 7838
+  let port = 7838
   let token = null
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--port')  port  = parseInt(args[++i]) || 7838
+    if (args[i] === '--port') port = parseInt(args[++i]) || 7838
     if (args[i] === '--token') token = args[++i]
   }
   info(`Starting CCM remote agent on port ${port}...`)
@@ -785,30 +967,52 @@ async function cmdAgent(args) {
 // ─── router ──────────────────────────────────────────────────────────────────
 export async function runCli(cmd, args) {
   switch (cmd) {
-    case 'account':    return cmdAccount(args)
-    case 'export':     return cmdExport(args)
-    case 'import':     return cmdImport(args)
-    case 'hooks':      return cmdHooks(args)
-    case 'serve':      return cmdServe(args)
-    case 'plugin':     return cmdPlugin(args)
-    case 'compress':   return cmdCompress(args)
-    case 'branch':     return cmdBranch(args)
-    case 'queue':      return cmdQueue(args)
-    case 'worker':     return cmdWorker(args)
-    case 'team':       return cmdTeam(args)
-    case 'prompt':     return cmdPrompt(args)
-    case 'agent':      return cmdAgent(args)
-    case 'run':        return cmdRun(args)
-    case 'switch':     return cmdSwitch(args)
-    case 'login':      return cmdLogin(args)
-    case 'status':     return cmdStatus()
-    case 'project':    return cmdProject(args)
-    case 'sync':       return cmdSync(args)
-    case 'checkpoint': return cmdSync(['checkpoint', ...args]) // shorthand
-    case 'ui':         return cmdUi()
+    case 'account':
+      return cmdAccount(args)
+    case 'export':
+      return cmdExport(args)
+    case 'import':
+      return cmdImport(args)
+    case 'hooks':
+      return cmdHooks(args)
+    case 'serve':
+      return cmdServe(args)
+    case 'plugin':
+      return cmdPlugin(args)
+    case 'compress':
+      return cmdCompress(args)
+    case 'branch':
+      return cmdBranch(args)
+    case 'queue':
+      return cmdQueue(args)
+    case 'worker':
+      return cmdWorker(args)
+    case 'team':
+      return cmdTeam(args)
+    case 'prompt':
+      return cmdPrompt(args)
+    case 'agent':
+      return cmdAgent(args)
+    case 'run':
+      return cmdRun(args)
+    case 'switch':
+      return cmdSwitch(args)
+    case 'login':
+      return cmdLogin(args)
+    case 'status':
+      return cmdStatus()
+    case 'project':
+      return cmdProject(args)
+    case 'sync':
+      return cmdSync(args)
+    case 'checkpoint':
+      return cmdSync(['checkpoint', ...args]) // shorthand
+    case 'ui':
+      return cmdUi()
     case 'help':
     case '--help':
-    case '-h':         return cmdHelp()
+    case '-h':
+      return cmdHelp()
     default:
       cmdHelp()
       process.exit(1)

@@ -9,9 +9,14 @@ global.fetch = vi.fn()
 
 describe('compressSession', () => {
   const makeJSONL = (count, charsEach = 100) => {
-    return Array.from({ length: count }, (_, i) =>
-      JSON.stringify({ type: i % 2 === 0 ? 'human' : 'assistant', content: 'x'.repeat(charsEach) })
-    ).join('\n') + '\n'
+    return (
+      Array.from({ length: count }, (_, i) =>
+        JSON.stringify({
+          type: i % 2 === 0 ? 'human' : 'assistant',
+          content: 'x'.repeat(charsEach),
+        })
+      ).join('\n') + '\n'
+    )
   }
 
   it('skips when file does not exist', async () => {
@@ -21,10 +26,10 @@ describe('compressSession', () => {
   })
 
   it('skips when under threshold', async () => {
-    const dir  = join(tmpdir(), `ccm-compress-${Date.now()}`)
+    const dir = join(tmpdir(), `ccm-compress-${Date.now()}`)
     mkdirSync(dir, { recursive: true })
     const file = join(dir, 'session.jsonl')
-    writeFileSync(file, makeJSONL(10, 10))  // tiny file
+    writeFileSync(file, makeJSONL(10, 10)) // tiny file
 
     const result = await compressSession(file, { threshold: 1000000 })
     expect(result.skipped).toBe(true)
@@ -32,7 +37,7 @@ describe('compressSession', () => {
   })
 
   it('dry-run makes no writes', async () => {
-    const dir  = join(tmpdir(), `ccm-compress-${Date.now()}`)
+    const dir = join(tmpdir(), `ccm-compress-${Date.now()}`)
     mkdirSync(dir, { recursive: true })
     const file = join(dir, 'session.jsonl')
     const original = makeJSONL(50, 200)
@@ -48,10 +53,10 @@ describe('compressSession', () => {
   it('returns api_unavailable when fetch fails', async () => {
     global.fetch.mockResolvedValueOnce({ ok: false, status: 500 })
 
-    const dir  = join(tmpdir(), `ccm-compress-${Date.now()}`)
+    const dir = join(tmpdir(), `ccm-compress-${Date.now()}`)
     mkdirSync(dir, { recursive: true })
     const file = join(dir, 'session.jsonl')
-    writeFileSync(file, makeJSONL(50, 300))  // large enough to trigger
+    writeFileSync(file, makeJSONL(50, 300)) // large enough to trigger
 
     const result = await compressSession(file, { threshold: 1 })
     expect(result.skipped).toBe(true)
@@ -64,7 +69,7 @@ describe('compressSession', () => {
       json: async () => ({ content: [{ text: 'Summary of conversation' }] }),
     })
 
-    const dir  = join(tmpdir(), `ccm-compress-${Date.now()}`)
+    const dir = join(tmpdir(), `ccm-compress-${Date.now()}`)
     mkdirSync(dir, { recursive: true })
     const file = join(dir, 'session.jsonl')
     writeFileSync(file, makeJSONL(50, 300))

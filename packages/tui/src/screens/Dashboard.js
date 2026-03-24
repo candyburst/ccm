@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react'
 import { Box, Text, useInput } from 'ink'
-import { listAccounts, setActiveAccount, getActiveAccount, updateAccount, loadProject, AUTH } from '@ccm/core'
+import {
+  listAccounts,
+  setActiveAccount,
+  getActiveAccount,
+  updateAccount,
+  loadProject,
+  AUTH,
+} from '@ccm/core'
 
 export default function Dashboard({ go }) {
   const [accounts, setAccounts] = useState([])
   const [selected, setSelected] = useState(0)
-  const [status,   setStatus]   = useState('')
+  const [status, setStatus] = useState('')
 
   function refresh() {
     const list = listAccounts()
@@ -14,10 +21,12 @@ export default function Dashboard({ go }) {
     setSelected(i => Math.min(i, Math.max(0, list.length - 1)))
   }
 
-  useEffect(() => { refresh() }, [])
+  useEffect(() => {
+    refresh()
+  }, [])
 
   useInput((input, key) => {
-    if (key.upArrow)   setSelected(i => Math.max(0, i - 1))
+    if (key.upArrow) setSelected(i => Math.max(0, i - 1))
     if (key.downArrow) setSelected(i => Math.min(accounts.length - 1, i + 1))
 
     if (key.return && accounts[selected]) {
@@ -29,7 +38,7 @@ export default function Dashboard({ go }) {
     if (input === 'a') go('add-account')
 
     if (input === 'd' && accounts[selected]) {
-      const acct    = accounts[selected]
+      const acct = accounts[selected]
       const toggled = !acct.disabled
       updateAccount(acct.name, { disabled: toggled })
       setStatus(toggled ? `"${acct.name}" disabled` : `"${acct.name}" enabled`)
@@ -44,9 +53,13 @@ export default function Dashboard({ go }) {
       {project && (
         <Box borderStyle="round" borderColor="green" paddingX={1}>
           <Text>
-            Project: <Text bold color="green">{project.name}</Text>
+            Project:{' '}
+            <Text bold color="green">
+              {project.name}
+            </Text>
             {'  '}bound to: <Text color="cyan">{project.account}</Text>
-            {'  '}<Text dimColor>{project.projectRoot}</Text>
+            {'  '}
+            <Text dimColor>{project.projectRoot}</Text>
           </Text>
         </Box>
       )}
@@ -55,16 +68,18 @@ export default function Dashboard({ go }) {
 
       {accounts.length === 0 && (
         <Box paddingY={1}>
-          <Text color="yellow">No accounts yet. Press <Text bold>a</Text> to add one.</Text>
+          <Text color="yellow">
+            No accounts yet. Press <Text bold>a</Text> to add one.
+          </Text>
         </Box>
       )}
 
       {accounts.map((a, i) => {
-        const isSel    = i === selected
+        const isSel = i === selected
         const isActive = a.active
         const isDisabled = a.disabled
-        const typeTag  = a.type === AUTH.API_KEY ? 'api' : 'email'
-        const detail   = a.type === AUTH.EMAIL ? a.email : ''
+        const typeTag = a.type === AUTH.API_KEY ? 'api' : 'email'
+        const detail = a.type === AUTH.EMAIL ? a.email : ''
         return (
           <Box
             key={a.name}
@@ -79,10 +94,12 @@ export default function Dashboard({ go }) {
             <Text bold={isSel} color={isDisabled ? 'gray' : isSel ? 'white' : 'gray'}>
               {a.name}
             </Text>
-            <Text color="cyan" dimColor>{typeTag}</Text>
+            <Text color="cyan" dimColor>
+              {typeTag}
+            </Text>
             {detail ? <Text dimColor>{detail}</Text> : null}
             {a.notes ? <Text dimColor>— {a.notes}</Text> : null}
-            {isActive   && <Text color="green">← active</Text>}
+            {isActive && <Text color="green">← active</Text>}
             {isDisabled && <Text color="red">disabled</Text>}
           </Box>
         )
@@ -91,7 +108,7 @@ export default function Dashboard({ go }) {
       {status ? <Text color="green">{status}</Text> : null}
 
       <Box marginTop={1}>
-        <Text dimColor>↑↓ select  •  Enter: set active  •  a: add  •  d: toggle disable</Text>
+        <Text dimColor>↑↓ select • Enter: set active • a: add • d: toggle disable</Text>
       </Box>
     </Box>
   )

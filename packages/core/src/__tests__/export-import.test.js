@@ -5,13 +5,20 @@ import { exportAccounts, importAccounts } from '../export-import.js'
 vi.mock('../accounts.js', () => ({
   loadAccounts: vi.fn(() => ({
     work: {
-      name: 'work', type: 'api_key', notes: 'main',
-      disabled: false, priority: 0,
+      name: 'work',
+      type: 'api_key',
+      notes: 'main',
+      disabled: false,
+      priority: 0,
       createdAt: '2026-01-01T00:00:00.000Z',
     },
     email1: {
-      name: 'email1', type: 'email', email: 'user@example.com', notes: '',
-      disabled: false, priority: 1,
+      name: 'email1',
+      type: 'email',
+      email: 'user@example.com',
+      notes: '',
+      disabled: false,
+      priority: 1,
       createdAt: '2026-01-01T00:00:00.000Z',
     },
   })),
@@ -22,7 +29,7 @@ vi.mock('../crypto.js', () => ({
   encrypt: vi.fn(text => `ENCRYPTED:${text}`),
 }))
 
-vi.mock('fs', async (orig) => {
+vi.mock('fs', async orig => {
   const actual = await orig()
   return { ...actual, writeFileSync: vi.fn(), renameSync: vi.fn(), existsSync: vi.fn(() => false) }
 })
@@ -82,7 +89,7 @@ describe('importAccounts', () => {
 
   it('never imports account as active', () => {
     const exported = exportAccounts({ plain: true })
-    const payload  = JSON.parse(exported)
+    const payload = JSON.parse(exported)
     // Manually mark one as active in the export
     payload.accounts[0].active = true
     const modified = JSON.stringify(payload)
